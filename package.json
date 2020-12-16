@@ -13,9 +13,6 @@
     "components"
   ],
   "dependencies": {
-    "babel-core": "^6.26.3",
-    "babel-loader": "^8.2.2",
-    "babel-preset-es2015": "^6.24.1",
     "aphrodite": "^2.4.0",
     "classnames": "^2.2.6",
     "downshift": "^3.4.8",
@@ -45,6 +42,9 @@
     "style-loader": "^2.0.0",
     "webpack": "^5.10.1",
     "webpack-cli": "^4.2.0",
-    "webpack-dev-server": "^3.11.0"
+    "webpack-dev-server": "^3.11.0",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^8.2.2",
+    "babel-preset-es2015": "^6.24.1"
   }
 }
