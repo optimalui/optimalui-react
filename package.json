@@ -5,6 +5,7 @@
   "author": "optimalui.com",
   "license": "LicenseRef-<LICENSE>",
   "private": false,
+  "repository": "https://github.com/optimalui/optimalui-react",
   "keywords": [
     "reactjs",
     "react components",
