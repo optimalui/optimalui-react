@@ -6,6 +6,7 @@
   "license": "LicenseRef-<LICENSE>",
   "private": false,
   "repository": "https://github.com/optimalui/optimalui-react",
+  "homepage": "http://optimalui.com",
   "keywords": [
     "reactjs",
     "react components",
