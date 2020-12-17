@@ -2,7 +2,7 @@
 import React, { Component, cloneElement, createElement } from 'react';
 import PropTypes from 'prop-types';
 import cx from 'classnames';
-import { MenuItem, SubMenu as ContainerMenu } from './'
+import { MenuItem } from './MenuItem'
 import { menuStyle } from '../../assets/jss'
 import injectSheet from 'react-jss'
 import { noop } from '../../util'

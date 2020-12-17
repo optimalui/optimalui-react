@@ -3,8 +3,9 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom'
 import {Icon} from '../Icon'
+import '../../assets/css/button.css'
 
-export default class RegularButton extends Component {
+export default class Button extends Component {
   static propTypes = {
     active: PropTypes.bool,
     className: PropTypes.string,

@@ -22,5 +22,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-#src
 /src
+.babelrc
+.gitignore
+rollup.config.js
+stats.html
+webpack.config.js
+yarn.lock
+

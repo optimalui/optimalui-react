@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import { buttonGroupStyle as styles } from '../../assets/jss'
 import cx from 'classnames'
 import withStyles from 'react-jss';
+import '../../assets/css/button.css'
 
 class RegularButtonGroup extends Component {
     static propTypes = {

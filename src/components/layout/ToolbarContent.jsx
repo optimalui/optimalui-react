@@ -1,7 +1,7 @@
 /* eslint-disable */
 import React, { cloneElement } from 'react';
 import cx from 'classnames';
-import { Menu } from '../layout'
+import { Menu } from '../layout/Menu'
 
 export const ToolbarContent = ({ children, align, className: customClassName, ...other }) => {
     const setClassName = cx({

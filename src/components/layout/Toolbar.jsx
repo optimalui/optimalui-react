@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import cx from 'classnames';
 import { toolbarStyle } from '../../assets/jss'
 import injectSheet from 'react-jss'
-import { ToolbarItem } from '../layout'
+import { ToolbarItem } from '../layout/ToolbarItem'
 import _ from 'lodash'
 
 

@@ -1,5 +1,4 @@
 export * from './Menu'
-export * from './MenuItem'
 export * from './Toolbar'
 export * from './ToolbarItem'
 export * from './ToolbarContent'
