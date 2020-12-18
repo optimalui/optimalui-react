@@ -1169,7 +1169,7 @@ function _nonIterableRest() {
     });
   };
 
-  p.catch = function (onRejected) {
+  p["catch"] = function (onRejected) {
     return this.then(undefined, onRejected);
   };
 
@@ -1761,7 +1761,7 @@ function _nonIterableRest() {
   var _inProgress = new RegExp(animationPrefix + "(enter|leave)");
 
   var Animation = {
-    in: function _in(element, animation, duration, origin) {
+    "in": function _in(element, animation, duration, origin) {
       return animate(element, animation, duration, origin, false);
     },
     out: function out(element, animation, duration, origin) {
@@ -2333,8 +2333,8 @@ function _nonIterableRest() {
       child = child.options;
     }
 
-    if (child.extends) {
-      parent = mergeOptions(parent, child.extends, vm);
+    if (child["extends"]) {
+      parent = mergeOptions(parent, child["extends"], vm);
     }
 
     if (child.mixins) {
@@ -2466,7 +2466,7 @@ function _nonIterableRest() {
         var promise = this.el.play();
 
         if (promise) {
-          promise.catch(noop);
+          promise["catch"](noop);
         }
       } catch (e) {}
     }
@@ -2978,7 +2978,7 @@ function _nonIterableRest() {
       Sub.prototype = Object.create(Super.prototype);
       Sub.prototype.constructor = Sub;
       Sub.options = mergeOptions(Super.options, options);
-      Sub.super = Super;
+      Sub["super"] = Super;
       Sub.extend = Super.extend;
       return Sub;
     };
@@ -3665,12 +3665,12 @@ function _nonIterableRest() {
         var promise = (isFunction(animate) ? animate : animate === false || !this.hasAnimation ? this._toggle : this.hasTransition ? toggleHeight(this) : toggleAnimation(this))(el, show);
         trigger(el, show ? 'show' : 'hide', [this]);
 
-        var final = function final() {
+        var _final = function _final() {
           trigger(el, show ? 'shown' : 'hidden', [this$1]);
           this$1.$update(el);
         };
 
-        return promise ? promise.then(final) : Promise.resolve(final());
+        return promise ? promise.then(_final) : Promise.resolve(_final());
       },
       _toggle: function _toggle(el, toggled) {
         if (!el) {
@@ -3741,7 +3741,7 @@ function _nonIterableRest() {
       if (show) {
         _toggle(el, true);
 
-        return Animation.in(el, animation[0], duration, origin);
+        return Animation["in"](el, animation[0], duration, origin);
       }
 
       return Animation.out(el, animation[1] || animation[0], duration, origin).then(function () {
@@ -4435,7 +4435,7 @@ function _nonIterableRest() {
   }
 
   var Dropdown = {
-    extends: Drop
+    "extends": Drop
   };
   var FormCustom = {
     mixins: [Class],
@@ -4612,7 +4612,7 @@ function _nonIterableRest() {
   }
 
   var Grid = {
-    extends: Margin,
+    "extends": Margin,
     mixins: [Class],
     name: 'grid',
     props: {
@@ -4936,7 +4936,7 @@ function _nonIterableRest() {
     connected: function connected() {
       var this$1 = this;
       var assign;
-      this.class += ' uk-svg';
+      this["class"] += ' uk-svg';
 
       if (!this.icon && includes(this.src, '#')) {
         var parts = this.src.split('#');
@@ -5174,7 +5174,7 @@ function _nonIterableRest() {
     }
   };
   var IconComponent = {
-    extends: Icon,
+    "extends": Icon,
     data: function data(vm) {
       return {
         icon: hyphenate(vm.constructor.options.name)
@@ -5182,7 +5182,7 @@ function _nonIterableRest() {
     }
   };
   var Slidenav = {
-    extends: IconComponent,
+    "extends": IconComponent,
     connected: function connected() {
       addClass(this.$el, 'uk-slidenav');
     },
@@ -5194,7 +5194,7 @@ function _nonIterableRest() {
     }
   };
   var Search = {
-    extends: IconComponent,
+    "extends": IconComponent,
     computed: {
       icon: function icon(ref, $el) {
         var icon = ref.icon;
@@ -5203,7 +5203,7 @@ function _nonIterableRest() {
     }
   };
   var Close = {
-    extends: IconComponent,
+    "extends": IconComponent,
     computed: {
       icon: function icon() {
         return "close-" + (hasClass(this.$el, 'uk-close-large') ? 'large' : 'icon');
@@ -5211,7 +5211,7 @@ function _nonIterableRest() {
     }
   };
   var Spinner = {
-    extends: IconComponent,
+    "extends": IconComponent,
     connected: function connected() {
       var this$1 = this;
       this.svg.then(function (svg) {
@@ -5894,7 +5894,7 @@ function _nonIterableRest() {
   }
 
   var Nav = {
-    extends: Accordion,
+    "extends": Accordion,
     data: {
       targets: '> .uk-parent',
       toggle: '> a',
@@ -6081,7 +6081,7 @@ function _nonIterableRest() {
           height: newHeight
         }, this.duration), Transition.start(el, {
           clip: "rect(0," + el.offsetWidth + "px," + newHeight + "px,0)"
-        }, this.duration)]).catch(noop).then(function () {
+        }, this.duration)])["catch"](noop).then(function () {
           css(el, {
             clip: ''
           });
@@ -6801,7 +6801,7 @@ function _nonIterableRest() {
         } else if (this.animation) {
           Animation.cancel(this.$el);
           this.show();
-          Animation.in(this.$el, this.animation).catch(noop);
+          Animation["in"](this.$el, this.animation)["catch"](noop);
         } else {
           this.show();
         }
@@ -6986,7 +6986,7 @@ function _nonIterableRest() {
   };
   var Tab = {
     mixins: [Class],
-    extends: Switcher,
+    "extends": Switcher,
     props: {
       media: Boolean
     },
@@ -9488,7 +9488,7 @@ function _nonIterableRest() {
         var dir = ref_detail.dir;
         Transition.cancel(this.$el);
         css(this.$el, this.getCss(getCurrent(type, dir, percent)));
-        Transition.start(this.$el, this.getCss(isIn(type) ? .5 : dir > 0 ? 1 : 0), duration, timing).catch(noop);
+        Transition.start(this.$el, this.getCss(isIn(type) ? .5 : dir > 0 ? 1 : 0), duration, timing)["catch"](noop);
       }
     }, {
       name: 'transitioncanceled transitionend',
@@ -11568,7 +11568,7 @@ var menuStyle = {
     padding: '25px',
     // marginTop: '40px',
     background: '#fff',
-    float: 'left',
+    "float": 'left',
     color: '#666',
     boxShadow: '0 5px 12px rgba(0, 0, 0, 0.15)'
   },
@@ -11638,11 +11638,11 @@ var menuStyle = {
     fontSize: '14px'
   },
   iconStyle: {
-    float: 'right'
+    "float": 'right'
   },
   iconClass: {
     marginRight: '10px !important',
-    float: 'left'
+    "float": 'left'
   },
   disabledItem: {
     cursor: 'default',
@@ -14508,7 +14508,7 @@ var getDropDownStyle = function getDropDownStyle() {
     var _module = require("react-animations/lib/".concat(animationName));
 
     Object.assign(animObject, {
-      animationName: [_module.default],
+      animationName: [_module["default"]],
       animationDuration: duration
     });
   }
@@ -14588,7 +14588,7 @@ var buttonGroupStyle = {
 };
 
 var marginStyle = {
-  default: {
+  "default": {
     margin: '20px'
   },
   top: {
@@ -14730,7 +14730,7 @@ var tabStripStyle = function tabStripStyle(alignment, selected, disabled, animat
     var _module = require("react-animations/lib/".concat(animationName));
 
     Object.assign(animObject, {
-      animationName: [_module.default],
+      animationName: [_module["default"]],
       animationDuration: duration
     });
   }
@@ -14883,7 +14883,7 @@ var tabStripStyle = function tabStripStyle(alignment, selected, disabled, animat
   }
 
   var styles = noImportant$1.StyleSheet.create({
-    default: _objectSpread2(_objectSpread2({}, _default), borderStyle),
+    "default": _objectSpread2(_objectSpread2({}, _default), borderStyle),
     text: _objectSpread2(_objectSpread2(_objectSpread2(_objectSpread2(_objectSpread2({}, textColor), pointerEvents), borderColorStyle), {}, {
       border: '2px solid transparent',
       display: 'block'
@@ -20466,7 +20466,7 @@ RegularIcon.defaultProps = {
 };
 var styledIcon = createWithStyles(iconStyle)(RegularIcon);
 
-var Card = forwardRef$2(function Card(props, ref) {
+var Card = /*#__PURE__*/forwardRef$2(function Card(props, ref) {
   var className = props.className,
       children = props.children,
       color = props.color,
@@ -40862,7 +40862,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
     };
     _this.subMenu = [];
     _this.menu = [];
-    _this.menuRef = React.createRef();
+    _this.menuRef = /*#__PURE__*/React.createRef();
     return _this;
   }
 
@@ -40909,7 +40909,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
             itemIndex = _ref.itemIndex;
         return lodash.map(menuItems, function (item, index) {
           var itemId = typeof itemIndex !== 'undefined' ? "".concat(menuId, "-menu-item-").concat(itemIndex, "-").concat(index) : "".concat(menuId, "-menu-item-").concat(index);
-          return createElement(routeMenuItem, _objectSpread2(_objectSpread2({}, item), {}, {
+          return /*#__PURE__*/createElement(routeMenuItem, _objectSpread2(_objectSpread2({}, item), {}, {
             vertical: vertical,
             parent: item.hasOwnProperty('items'),
             key: itemId,
@@ -40932,7 +40932,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
       var CloneItems = function CloneItems(_ref2) {
         var children = _ref2.children;
         return React.Children.map(children, function (child, index) {
-          return cloneElement(child, {
+          return /*#__PURE__*/cloneElement(child, {
             key: "menu-item-".concat(index),
             vertical: vertical,
             onSelect: _this2.onSelect.bind(_this2, child),
@@ -41054,13 +41054,13 @@ var ToolbarItem = /*#__PURE__*/function (_Component) {
         className: itemClass
       }, other), React.Children.map(children, function (child, index) {
         if (child.type === styledMenu) {
-          return cloneElement(child, {
+          return /*#__PURE__*/cloneElement(child, {
             toolbar: true,
             key: index
           });
         }
 
-        return cloneElement(child, _objectSpread2(_objectSpread2({}, child.props), {}, {
+        return /*#__PURE__*/cloneElement(child, _objectSpread2(_objectSpread2({}, child.props), {}, {
           key: index
         }));
       }));
@@ -41115,7 +41115,7 @@ var Toolbar = /*#__PURE__*/function (_Component) {
         "uk-navbar": ""
       }), React.Children.map(children, function (child) {
         if (child.type === styledToolbarItem) {
-          return cloneElement(child, _objectSpread2({}, child.props));
+          return /*#__PURE__*/cloneElement(child, _objectSpread2({}, child.props));
         }
       }));
     }
@@ -41148,13 +41148,13 @@ var ToolbarContent = function ToolbarContent(_ref) {
     className: setClassName
   }, other), /*#__PURE__*/React.createElement("div", null, React.Children.map(children, function (child, index) {
     if (child.type === styledMenu) {
-      return cloneElement(child, {
+      return /*#__PURE__*/cloneElement(child, {
         toolbar: true,
         key: index
       });
     }
 
-    return cloneElement(child, _objectSpread2(_objectSpread2({}, child.props), {}, {
+    return /*#__PURE__*/cloneElement(child, _objectSpread2(_objectSpread2({}, child.props), {}, {
       key: index
     }));
   })));
@@ -41166,9 +41166,9 @@ var RegularMargin = function RegularMargin(_ref) {
   var children = _ref.children,
       type = _ref.type,
       classes = _ref.classes;
-  var customClassName = classnames((_classNames = {}, _defineProperty(_classNames, classes.default, type === 'default'), _defineProperty(_classNames, classes.top, type === 'top'), _defineProperty(_classNames, classes.bottom, type === 'bottom'), _defineProperty(_classNames, classes.left, type === 'left'), _defineProperty(_classNames, classes.right, type === 'right'), _defineProperty(_classNames, classes.small, type === 'small'), _defineProperty(_classNames, classes.smallTop, type === 'small-top'), _defineProperty(_classNames, classes.smallBottom, type === 'small-bottom'), _defineProperty(_classNames, classes.smallLeft, type === 'small-left'), _defineProperty(_classNames, classes.smallRight, type === 'small-right'), _defineProperty(_classNames, classes.medium, type === 'medium'), _defineProperty(_classNames, classes.mediumTop, type === 'medium-top'), _defineProperty(_classNames, classes.mediumBottom, type === 'medium-bottom'), _defineProperty(_classNames, classes.mediumLeft, type === 'medium-left'), _defineProperty(_classNames, classes.mediumRight, type === 'medium-right'), _defineProperty(_classNames, classes.large, type === 'large'), _defineProperty(_classNames, classes.largeTop, type === 'large-top'), _defineProperty(_classNames, classes.largeBottom, type === 'large-bottom'), _defineProperty(_classNames, classes.largeLeft, type === 'large-left'), _defineProperty(_classNames, classes.largeRight, type === 'large-right'), _defineProperty(_classNames, classes.xlarge, type === 'xlarge'), _defineProperty(_classNames, classes.xlargeTop, type === 'xlarge-top'), _defineProperty(_classNames, classes.xlargeBottom, type === 'xlarge-bottom'), _defineProperty(_classNames, classes.xlargeLeft, type === 'xlarge-left'), _defineProperty(_classNames, classes.xlargeRight, type === 'xlarge-right'), _defineProperty(_classNames, classes.remove, type === 'remove'), _defineProperty(_classNames, classes.removeTop, type === 'remove-top'), _defineProperty(_classNames, classes.removeBottom, type === 'remove-bottom'), _defineProperty(_classNames, classes.removeLeft, type === 'remove-left'), _defineProperty(_classNames, classes.removeRight, type === 'remove-right'), _defineProperty(_classNames, classes.removeVertical, type === 'remove-vertical'), _defineProperty(_classNames, classes.removeAdjacent, type === 'remove-adjacent'), _defineProperty(_classNames, classes.auto, type === 'auto'), _defineProperty(_classNames, classes.autoTop, type === 'auto-top'), _defineProperty(_classNames, classes.autoBottom, type === 'auto-bottom'), _defineProperty(_classNames, classes.autoLeft, type === 'auto-left'), _defineProperty(_classNames, classes.autoRight, type === 'auto-right'), _defineProperty(_classNames, classes.autoVertical, type === 'auto-vertical'), _classNames));
+  var customClassName = classnames((_classNames = {}, _defineProperty(_classNames, classes["default"], type === 'default'), _defineProperty(_classNames, classes.top, type === 'top'), _defineProperty(_classNames, classes.bottom, type === 'bottom'), _defineProperty(_classNames, classes.left, type === 'left'), _defineProperty(_classNames, classes.right, type === 'right'), _defineProperty(_classNames, classes.small, type === 'small'), _defineProperty(_classNames, classes.smallTop, type === 'small-top'), _defineProperty(_classNames, classes.smallBottom, type === 'small-bottom'), _defineProperty(_classNames, classes.smallLeft, type === 'small-left'), _defineProperty(_classNames, classes.smallRight, type === 'small-right'), _defineProperty(_classNames, classes.medium, type === 'medium'), _defineProperty(_classNames, classes.mediumTop, type === 'medium-top'), _defineProperty(_classNames, classes.mediumBottom, type === 'medium-bottom'), _defineProperty(_classNames, classes.mediumLeft, type === 'medium-left'), _defineProperty(_classNames, classes.mediumRight, type === 'medium-right'), _defineProperty(_classNames, classes.large, type === 'large'), _defineProperty(_classNames, classes.largeTop, type === 'large-top'), _defineProperty(_classNames, classes.largeBottom, type === 'large-bottom'), _defineProperty(_classNames, classes.largeLeft, type === 'large-left'), _defineProperty(_classNames, classes.largeRight, type === 'large-right'), _defineProperty(_classNames, classes.xlarge, type === 'xlarge'), _defineProperty(_classNames, classes.xlargeTop, type === 'xlarge-top'), _defineProperty(_classNames, classes.xlargeBottom, type === 'xlarge-bottom'), _defineProperty(_classNames, classes.xlargeLeft, type === 'xlarge-left'), _defineProperty(_classNames, classes.xlargeRight, type === 'xlarge-right'), _defineProperty(_classNames, classes.remove, type === 'remove'), _defineProperty(_classNames, classes.removeTop, type === 'remove-top'), _defineProperty(_classNames, classes.removeBottom, type === 'remove-bottom'), _defineProperty(_classNames, classes.removeLeft, type === 'remove-left'), _defineProperty(_classNames, classes.removeRight, type === 'remove-right'), _defineProperty(_classNames, classes.removeVertical, type === 'remove-vertical'), _defineProperty(_classNames, classes.removeAdjacent, type === 'remove-adjacent'), _defineProperty(_classNames, classes.auto, type === 'auto'), _defineProperty(_classNames, classes.autoTop, type === 'auto-top'), _defineProperty(_classNames, classes.autoBottom, type === 'auto-bottom'), _defineProperty(_classNames, classes.autoLeft, type === 'auto-left'), _defineProperty(_classNames, classes.autoRight, type === 'auto-right'), _defineProperty(_classNames, classes.autoVertical, type === 'auto-vertical'), _classNames));
   return /*#__PURE__*/React.createElement("div", null, React.Children.map(children, function (item, index) {
-    return cloneElement(item, _objectSpread2(_objectSpread2({
+    return /*#__PURE__*/cloneElement(item, _objectSpread2(_objectSpread2({
       key: "element-".concat(index)
     }, item.props), {}, {
       className: item.props.className ? classnames(item.props.className, customClassName) : customClassName
@@ -41337,7 +41337,7 @@ var TabStrip = /*#__PURE__*/function (_Component) {
       tabCount: 0,
       openDropDown: false
     };
-    _this.tabStripRef = React.createRef();
+    _this.tabStripRef = /*#__PURE__*/React.createRef();
     _this.getSelectedTab = _this.getSelectedTab.bind(_assertThisInitialized(_this));
     _this.setSelectedTabState = _this.setSelectedTabState.bind(_assertThisInitialized(_this));
     _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized(_this));
@@ -41512,13 +41512,13 @@ var TabStrip = /*#__PURE__*/function (_Component) {
           selectedTabItemIndex = _this$state3.selectedTabItemIndex,
           openDropDown = _this$state3.openDropDown;
       var styles = tabStripStyle(alignTabs, null, null, animation, duration);
-      var className = noImportant$1.css(styles.default);
+      var className = noImportant$1.css(styles["default"]);
       var events = {
         onSelect: this.handleSelected
       };
       var tabElements = React.Children.map(children, function (child, index) {
         if (child.type === Tab) {
-          return cloneElement(child, {
+          return /*#__PURE__*/cloneElement(child, {
             key: "tab-".concat(index),
             onClick: _this2.handleSelected.bind(_this2, index, child.props.onClick),
             onSelect: _this2.getSelectedTabItemIndex.bind(_this2),
@@ -41614,7 +41614,7 @@ var Tab = /*#__PURE__*/function (_Component) {
       tabItemIndex: 0
     };
     _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
-    _this.dropDownWrapperRef = React.createRef();
+    _this.dropDownWrapperRef = /*#__PURE__*/React.createRef();
     _this.toggleDropDown = _this.toggleDropDown.bind(_assertThisInitialized(_this));
     _this.dropDownClickOutSide = _this.dropDownClickOutSide.bind(_assertThisInitialized(_this));
     _this.keyCode = Object.freeze({
@@ -41632,7 +41632,7 @@ var Tab = /*#__PURE__*/function (_Component) {
       DOWN: 40,
       ENTER: 13
     });
-    _this.tabItemRef = React.createRef();
+    _this.tabItemRef = /*#__PURE__*/React.createRef();
     return _this;
   }
 
@@ -41726,7 +41726,7 @@ var Tab = /*#__PURE__*/function (_Component) {
       var className = classnames(customClassName, noImportant$1.css(styles.text));
       var tabItems = React.Children.map(children, function (child, index) {
         if (child.type === TabItem) {
-          return cloneElement(child, {
+          return /*#__PURE__*/cloneElement(child, {
             key: index,
             ref: _this2.tabItemRef,
             onClick: _this2.handleItemClick.bind(_this2, index, child),
@@ -41825,7 +41825,7 @@ var TabItem = /*#__PURE__*/function (_Component) {
       selected: props.selected
     };
     _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
-    _this.tabItemRef = React.createRef();
+    _this.tabItemRef = /*#__PURE__*/React.createRef();
     return _this;
   }
 
@@ -42057,7 +42057,7 @@ var OffCanvas = function OffCanvas(props) {
     className: noImportant$1.css(canvasStyles.canvasContent)
   }, React.Children.map(children, function (child) {
     if (child.type === content) {
-      return cloneElement(child, _objectSpread2({}, child.props));
+      return /*#__PURE__*/cloneElement(child, _objectSpread2({}, child.props));
     }
   })))));
 };
@@ -42236,7 +42236,7 @@ GridItem.defaultProps = {
   w_5_6: false
 };
 
-var CardHeader = forwardRef$2(function CardHeader(props, ref) {
+var CardHeader = /*#__PURE__*/forwardRef$2(function CardHeader(props, ref) {
   var action = props.action,
       className = props.className,
       _props$component = props.component,
@@ -42272,9 +42272,9 @@ var CardHeader = forwardRef$2(function CardHeader(props, ref) {
   }, other), /*#__PURE__*/createElement(Grid, {
     className: "uk-grid-small uk-flex-middle"
   }, avatar && /*#__PURE__*/createElement("div", {
-    class: "uk-width-auto"
+    "class": "uk-width-auto"
   }, avatar), /*#__PURE__*/createElement("div", {
-    class: "uk-width-expand"
+    "class": "uk-width-expand"
   }, title, subheader)), action && /*#__PURE__*/createElement("div", {
     className: "uk-card-badge"
   }, action));
@@ -42332,7 +42332,7 @@ CardHeader.propTypes = {
 };
 CardHeader.displayName = "CardHeader";
 
-var CardBody = forwardRef$2(function CardBody(props, ref) {
+var CardBody = /*#__PURE__*/forwardRef$2(function CardBody(props, ref) {
   var classes = props.classes,
       className = props.className,
       _props$component = props.component,
@@ -42363,7 +42363,7 @@ CardBody.propTypes = {
 };
 CardBody.displayName = "CardBody";
 
-var CardFooter = forwardRef$2(function CardFooter(props, ref) {
+var CardFooter = /*#__PURE__*/forwardRef$2(function CardFooter(props, ref) {
   var className = props.className,
       other = _objectWithoutProperties(props, ["className"]);
 
@@ -42384,7 +42384,7 @@ CardFooter.propTypes = {
   className: propTypes.string
 };
 
-var CardMedia = forwardRef$2(function CardMedia(props, ref) {
+var CardMedia = /*#__PURE__*/forwardRef$2(function CardMedia(props, ref) {
   var className = props.className,
       align = props.align,
       children = props.children,
@@ -42446,7 +42446,7 @@ CardMedia.defaultProps = {
 };
 CardMedia.displayName = "CardMedia";
 
-var Avatar = forwardRef$2(function Avatar(props, ref) {
+var Avatar = /*#__PURE__*/forwardRef$2(function Avatar(props, ref) {
   var alt = props.alt,
       childrenProp = props.children,
       classes = props.classes,
@@ -42684,7 +42684,7 @@ var RegularButtonGroup = /*#__PURE__*/function (_Component) {
       return /*#__PURE__*/React.createElement("span", _extends({}, other, {
         className: className
       }), React.Children.map(children, function (item, index) {
-        return cloneElement(item, _objectSpread2(_objectSpread2({
+        return /*#__PURE__*/cloneElement(item, _objectSpread2(_objectSpread2({
           key: "btn-".concat(index)
         }, item.props), {}, {
           disabled: disabled
@@ -42753,7 +42753,7 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
       lastItemIndex: -1,
       currentItemIndex: -1
     };
-    _this.dropDownRef = React.createRef();
+    _this.dropDownRef = /*#__PURE__*/React.createRef();
     _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
     _this.handleMouseEnter = _this.handleMouseEnter.bind(_assertThisInitialized(_this));
     _this.handleMouseLeave = _this.handleMouseLeave.bind(_assertThisInitialized(_this));
@@ -42763,7 +42763,7 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
     _this.closeDropDown = _this.closeDropDown.bind(_assertThisInitialized(_this));
     _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized(_this));
     _this.handleItemKeyDown = _this.handleItemKeyDown.bind(_assertThisInitialized(_this));
-    _this.listRef = React.createRef();
+    _this.listRef = /*#__PURE__*/React.createRef();
     _this.keyCode = Object.freeze({
       'TAB': 9,
       'RETURN': 13,
@@ -43014,7 +43014,7 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
           text: item$1
         }, itemEventHandlers));
       }) : React.Children.map(children, function (item, index) {
-        return cloneElement(item, _objectSpread2(_objectSpread2(_objectSpread2({
+        return /*#__PURE__*/cloneElement(item, _objectSpread2(_objectSpread2(_objectSpread2({
           key: "item-".concat(index)
         }, item.props), itemEventHandlers), {}, {
           className: noImportant$1.css(item.props.className)
@@ -43315,7 +43315,7 @@ Checkbox.defaultProps = {
   disabled: false
 };
 
-var RadioGroupContext = createContext();
+var RadioGroupContext = /*#__PURE__*/createContext();
 
 function useRadioGroup() {
   return useContext$1(RadioGroupContext);
@@ -43356,7 +43356,7 @@ function createChainedFunction() {
   }, function () {});
 }
 
-var Radio = forwardRef$2(function Radio(props, ref) {
+var Radio = /*#__PURE__*/forwardRef$2(function Radio(props, ref) {
   var checkedProp = props.checked,
       nameProp = props.name,
       onChangeProp = props.onChange,
@@ -43424,7 +43424,7 @@ Radio.propTypes = {
 
 function useControlled(_ref) {
   var controlled = _ref.controlled,
-      defaultProp = _ref.default,
+      defaultProp = _ref["default"],
       name = _ref.name,
       _ref$state = _ref.state,
       state = _ref$state === void 0 ? 'value' : _ref$state;
@@ -43483,7 +43483,7 @@ function useId(idOverride) {
   return id;
 }
 
-var RadioGroup = forwardRef$2(function RadioGroup(props, ref) {
+var RadioGroup = /*#__PURE__*/forwardRef$2(function RadioGroup(props, ref) {
   var actions = props.actions,
       children = props.children,
       nameProp = props.name,
@@ -43495,7 +43495,7 @@ var RadioGroup = forwardRef$2(function RadioGroup(props, ref) {
 
   var _useControlled = useControlled({
     controlled: valueProp,
-    default: props.defaultValue,
+    "default": props.defaultValue,
     name: 'RadioGroup'
   }),
       _useControlled2 = _slicedToArray(_useControlled, 2),
@@ -44478,8 +44478,8 @@ var Select = /*#__PURE__*/function (_Component) {
     _this.closeOptions = _this.closeOptions.bind(_assertThisInitialized(_this));
     _this.handleDeleteValue = _this.handleDeleteValue.bind(_assertThisInitialized(_this));
     _this.handleFilterChange = _this.handleFilterChange.bind(_assertThisInitialized(_this));
-    _this.multiRef = React.createRef();
-    _this.filterRef = React.createRef();
+    _this.multiRef = /*#__PURE__*/React.createRef();
+    _this.filterRef = /*#__PURE__*/React.createRef();
     return _this;
   }
 
