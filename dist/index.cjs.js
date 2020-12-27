@@ -12422,6 +12422,33 @@ var uikitIcons = createCommonjsModule(function (module, exports) {
 })));
 });
 
+function styleInject(css, ref) {
+  if ( ref === void 0 ) ref = {};
+  var insertAt = ref.insertAt;
+
+  if (!css || typeof document === 'undefined') { return; }
+
+  var head = document.head || document.getElementsByTagName('head')[0];
+  var style = document.createElement('style');
+  style.type = 'text/css';
+
+  if (insertAt === 'top') {
+    if (head.firstChild) {
+      head.insertBefore(style, head.firstChild);
+    } else {
+      head.appendChild(style);
+    }
+  } else {
+    head.appendChild(style);
+  }
+
+  if (style.styleSheet) {
+    style.styleSheet.cssText = css;
+  } else {
+    style.appendChild(document.createTextNode(css));
+  }
+}
+
 function _typeof(obj) {
   "@babel/helpers - typeof";
 
@@ -22752,33 +22779,6 @@ var offCanvasStyle = {
     transitionProperty: 'color, opacity'
   }
 };
-
-function styleInject(css, ref) {
-  if ( ref === void 0 ) ref = {};
-  var insertAt = ref.insertAt;
-
-  if (!css || typeof document === 'undefined') { return; }
-
-  var head = document.head || document.getElementsByTagName('head')[0];
-  var style = document.createElement('style');
-  style.type = 'text/css';
-
-  if (insertAt === 'top') {
-    if (head.firstChild) {
-      head.insertBefore(style, head.firstChild);
-    } else {
-      head.appendChild(style);
-    }
-  } else {
-    head.appendChild(style);
-  }
-
-  if (style.styleSheet) {
-    style.styleSheet.cssText = css;
-  } else {
-    style.appendChild(document.createTextNode(css));
-  }
-}
 
 var css_248z = ".icon-module_icon__1Da-y{fill:currentcolor;font:inherit;color:inherit;border:none;margin:0;display:inline-block;padding:0;overflow:visible;line-height:0;border-radius:0;text-transform:none;background-color:transparent}.icon-module_icon__1Da-y>*{-webkit-transform:translate(0);transform:translate(0)}.icon-module_icon__1Da-y::-moz-focus-inner{border:0;padding:0}.icon-module_iconSmallRight__vhJW9{margin-right:10px!important}.icon-module_iconLink__FNpkj{color:#999}.icon-module_iconButton__1ZGoX{width:36px;height:36px;background:#f8f8f8;-webkit-box-sizing:border-box;box-sizing:border-box;-webkit-transition:.1s ease-in-out;transition:.1s ease-in-out;border-radius:500px;vertical-align:middle;-webkit-transition-property:color;transition-property:color}.icon-module_formIcon__a3WSa,.icon-module_iconButton__1ZGoX{color:#999;display:-webkit-inline-box;display:-ms-inline-flexbox;display:inline-flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center}.icon-module_formIcon__a3WSa{top:0;left:auto;right:0;width:40px;bottom:0;position:absolute}";
 var styles = {"icon":"icon-module_icon__1Da-y","iconSmallRight":"icon-module_iconSmallRight__vhJW9","iconLink":"icon-module_iconLink__FNpkj","iconButton":"icon-module_iconButton__1ZGoX","formIcon":"icon-module_formIcon__a3WSa"};
