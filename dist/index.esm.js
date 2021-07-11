@@ -1,19 +1,19 @@
-import React, { createContext, useRef, useContext as useContext$1, useMemo, useDebugValue, useEffect, forwardRef as forwardRef$2, createElement, Component, useLayoutEffect, cloneElement, useState, useCallback, useImperativeHandle } from 'react';
+import React, { createContext, useRef, useContext, useMemo, useDebugValue, useEffect, forwardRef as forwardRef$2, createElement, Component, useLayoutEffect, cloneElement, Children, Fragment as Fragment$1 } from 'react';
 import ReactDOM from 'react-dom';
 
-var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+var commonjsGlobal$1 = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function createCommonjsModule(fn) {
   var module = { exports: {} };
 	return fn(module, module.exports), module.exports;
 }
 
-/*! UIkit 3.6.5 | https://www.getuikit.com | (c) 2014 - 2020 YOOtheme | MIT License */
+/*! UIkit 3.6.18 | https://www.getuikit.com | (c) 2014 - 2021 YOOtheme | MIT License */
 
-var uikit = createCommonjsModule(function (module, exports) {
+createCommonjsModule(function (module, exports) {
 (function (global, factory) {
-     module.exports = factory() ;
-}(commonjsGlobal, (function () {
+    module.exports = factory() ;
+}(commonjsGlobal$1, (function () {
     var objPrototype = Object.prototype;
     var hasOwnProperty = objPrototype.hasOwnProperty;
 
@@ -21,39 +21,23 @@ var uikit = createCommonjsModule(function (module, exports) {
         return hasOwnProperty.call(obj, key);
     }
 
-    var hyphenateCache = {};
-    var hyphenateRe = /([a-z\d])([A-Z])/g;
+    var hyphenateRe = /\B([A-Z])/g;
 
-    function hyphenate(str) {
+    var hyphenate = memoize(function (str) { return str
+        .replace(hyphenateRe, '-$1')
+        .toLowerCase(); }
+    );
 
-        if (!(str in hyphenateCache)) {
-            hyphenateCache[str] = str
-                .replace(hyphenateRe, '$1-$2')
-                .toLowerCase();
-        }
-
-        return hyphenateCache[str];
-    }
-
-    var camelizeCache = {};
     var camelizeRe = /-(\w)/g;
 
-    function camelize(str) {
+    var camelize = memoize(function (str) { return str.replace(camelizeRe, toUpper); }
+    );
 
-        if (!(str in camelizeCache)) {
-            camelizeCache[str] = str.replace(camelizeRe, toUpper);
-        }
-
-        return camelizeCache[str];
-
-    }
+    var ucfirst = memoize(function (str) { return str.length ? toUpper(null, str.charAt(0)) + str.slice(1) : ''; }
+    );
 
     function toUpper(_, c) {
         return c ? c.toUpperCase() : '';
-    }
-
-    function ucfirst(str) {
-        return str.length ? toUpper(null, str.charAt(0)) + str.slice(1) : '';
     }
 
     var strPrototype = String.prototype;
@@ -384,6 +368,11 @@ var uikit = createCommonjsModule(function (module, exports) {
         return i < 0 ? i + length : i;
     }
 
+    function memoize(fn) {
+        var cache = Object.create(null);
+        return function (key) { return cache[key] || (cache[key] = fn(key)); };
+    }
+
     function attr(element, name, value) {
 
         if (isObject(name)) {
@@ -565,7 +554,7 @@ var uikit = createCommonjsModule(function (module, exports) {
     function getContext(selector, context) {
         if ( context === void 0 ) context = document;
 
-        return isContextSelector(selector) || isDocument(context)
+        return isString(selector) && isContextSelector(selector) || isDocument(context)
             ? context
             : context.ownerDocument;
     }
@@ -638,15 +627,13 @@ var uikit = createCommonjsModule(function (module, exports) {
     var contextSelectorRe = /(^|[^\\],)\s*[!>+~-]/;
     var contextSanitizeRe = /([!>+~-])(?=\s+[!>+~-]|\s*$)/g;
 
-    function isContextSelector(selector) {
-        return isString(selector) && selector.match(contextSelectorRe);
-    }
+    var isContextSelector = memoize(function (selector) { return selector.match(contextSelectorRe); });
 
     var selectorRe = /.*?[^\\](?:,|$)/g;
 
-    function splitSelector(selector) {
-        return selector.match(selectorRe).map(function (selector) { return selector.replace(/,$/, '').trim(); });
-    }
+    var splitSelector = memoize(function (selector) { return selector.match(selectorRe).map(function (selector) { return selector.replace(/,$/, '').trim(); }
+        ); }
+    );
 
     function domPath(element) {
         var names = [];
@@ -1029,19 +1016,23 @@ var uikit = createCommonjsModule(function (module, exports) {
     };
 
     function ajax(url, options) {
+
+        var env = assign({
+            data: null,
+            method: 'GET',
+            headers: {},
+            xhr: new XMLHttpRequest(),
+            beforeSend: noop,
+            responseType: ''
+        }, options);
+
+        return Promise.resolve()
+            .then(function () { return env.beforeSend(env); })
+            .then(function () { return send(url, env); });
+    }
+
+    function send(url, env) {
         return new Promise(function (resolve, reject) {
-
-            var env = assign({
-                data: null,
-                method: 'GET',
-                headers: {},
-                xhr: new XMLHttpRequest(),
-                beforeSend: noop,
-                responseType: ''
-            }, options);
-
-            env.beforeSend(env);
-
             var xhr = env.xhr;
 
             for (var prop in env) {
@@ -1289,76 +1280,83 @@ var uikit = createCommonjsModule(function (module, exports) {
     }
 
     function hasClass(element, cls) {
-        return cls && toNodes(element).some(function (element) { return element.classList.contains(cls.split(' ')[0]); });
+        var assign;
+
+        (assign = getClasses(cls), cls = assign[0]);
+        var nodes = toNodes(element);
+        for (var n = 0; n < nodes.length; n++) {
+            if (cls && nodes[n].classList.contains(cls)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    function toggleClass(element) {
-        var args = [], len = arguments.length - 1;
-        while ( len-- > 0 ) args[ len ] = arguments[ len + 1 ];
+    function toggleClass(element, cls, force) {
 
+        cls = getClasses(cls);
 
-        if (!args.length) {
-            return;
-        }
-
-        args = getArgs$1(args);
-
-        var force = !isString(last(args)) ? args.pop() : []; // in iOS 9.3 force === undefined evaluates to false
-
-        args = args.filter(Boolean);
-
-        toNodes(element).forEach(function (ref) {
-            var classList = ref.classList;
-
-            for (var i = 0; i < args.length; i++) {
-                supports.Force
-                    ? classList.toggle.apply(classList, [args[i]].concat(force))
-                    : (classList[(!isUndefined(force) ? force : !classList.contains(args[i])) ? 'add' : 'remove'](args[i]));
+        var nodes = toNodes(element);
+        for (var n = 0; n < nodes.length; n++) {
+            var list = nodes[n].classList;
+            for (var i = 0; i < cls.length; i++) {
+                if (isUndefined(force)) {
+                    list.toggle(cls[i]);
+                } else if (supports.Force) {
+                    list.toggle(cls[i], !!force);
+                } else {
+                    list[force ? 'add' : 'remove'](cls[i]);
+                }
             }
-        });
-
+        }
     }
 
     function apply$1(element, args, fn) {
-        args = getArgs$1(args).filter(Boolean);
+        var ref;
 
-        args.length && toNodes(element).forEach(function (ref) {
-            var classList = ref.classList;
 
-            supports.Multiple
-                ? classList[fn].apply(classList, args)
-                : args.forEach(function (cls) { return classList[fn](cls); });
-        });
+        args = args.reduce(function (args, arg) { return args.concat(getClasses(arg)); }, []);
+
+        var nodes = toNodes(element);
+        var loop = function ( n ) {
+            if (supports.Multiple) {
+                (ref = nodes[n].classList)[fn].apply(ref, args);
+            } else {
+                args.forEach(function (cls) { return nodes[n].classList[fn](cls); });
+            }
+        };
+
+        for (var n = 0; n < nodes.length; n++) loop( n );
     }
 
-    function getArgs$1(args) {
-        return args.reduce(function (args, arg) { return args.concat.call(args, isString(arg) && includes(arg, ' ') ? arg.trim().split(' ') : arg); }
-            , []);
+    function getClasses(str) {
+        str = String(str);
+        return (~str.indexOf(' ') ? str.split(' ') : [str]).filter(Boolean);
     }
 
     // IE 11
     var supports = {
 
         get Multiple() {
-            return this.get('_multiple');
+            return this.get('Multiple');
         },
 
         get Force() {
-            return this.get('_force');
+            return this.get('Force');
         },
 
         get: function(key) {
 
-            if (!hasOwn(this, key)) {
-                var ref = document.createElement('_');
-                var classList = ref.classList;
-                classList.add('a', 'b');
-                classList.toggle('c', false);
-                this._multiple = classList.contains('b');
-                this._force = !classList.contains('c');
-            }
+            var ref = document.createElement('_');
+            var classList = ref.classList;
+            classList.add('a', 'b');
+            classList.toggle('c', false);
+            supports = {
+                Multiple: classList.contains('b'),
+                Force: !classList.contains('c')
+            };
 
-            return this[key];
+            return supports[key];
         }
 
     };
@@ -1420,52 +1418,35 @@ var uikit = createCommonjsModule(function (module, exports) {
     }
 
     function getStyles(element, pseudoElt) {
-        element = toNode(element);
-        return element.ownerDocument.defaultView.getComputedStyle(element, pseudoElt);
+        return toWindow(element).getComputedStyle(element, pseudoElt);
     }
 
     function getStyle(element, property, pseudoElt) {
         return getStyles(element, pseudoElt)[property];
     }
 
-    var vars = {};
+    var parseCssVar = memoize(function (name) {
+        /* usage in css: .uk-name:before { content:"xyz" } */
+
+        var element = append(document.documentElement, document.createElement('div'));
+
+        addClass(element, ("uk-" + name));
+
+        name = getStyle(element, 'content', ':before').replace(/^["'](.*)["']$/, '$1');
+
+        remove(element);
+
+        return name;
+    });
 
     function getCssVar(name) {
-
-        var docEl = document.documentElement;
-
-        if (!isIE) {
-            return getStyles(docEl).getPropertyValue(("--uk-" + name));
-        }
-
-        if (!(name in vars)) {
-
-            /* usage in css: .uk-name:before { content:"xyz" } */
-
-            var element = append(docEl, document.createElement('div'));
-
-            addClass(element, ("uk-" + name));
-
-            vars[name] = getStyle(element, 'content', ':before').replace(/^["'](.*)["']$/, '$1');
-
-            remove(element);
-
-        }
-
-        return vars[name];
-
+        return !isIE
+            ? getStyles(document.documentElement).getPropertyValue(("--uk-" + name))
+            : parseCssVar(name);
     }
-
-    var cssProps = {};
 
     // https://drafts.csswg.org/cssom/#dom-cssstyledeclaration-setproperty
-    function propName(name) {
-
-        if (!cssProps[name]) {
-            cssProps[name] = vendorPropName(name);
-        }
-        return cssProps[name];
-    }
+    var propName = memoize(function (name) { return vendorPropName(name); });
 
     var cssPrefixes = ['webkit', 'moz', 'ms'];
 
@@ -1578,7 +1559,8 @@ var uikit = createCommonjsModule(function (module, exports) {
                 addClass(element, animation, animationPrefix + (out ? 'leave' : 'enter'));
 
                 if (startsWith(animation, animationPrefix)) {
-                    addClass(element, origin && ("uk-transform-origin-" + origin), out && (animationPrefix + "reverse"));
+                    origin && addClass(element, ("uk-transform-origin-" + origin));
+                    out && addClass(element, (animationPrefix + "reverse"));
                 }
 
             }); }
@@ -1612,9 +1594,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     function dimensions(element) {
 
-        var rect = isWindow(element) || !toNode(element)
-            ? {height: height(element), width: width(element), top: 0, left: 0}
-            : toNode(element).getBoundingClientRect();
+        var rect = isElement(element)
+            ? toNode(element).getBoundingClientRect()
+            : {height: height(element), width: width(element), top: 0, left: 0};
 
         return {
             height: rect.height,
@@ -1655,17 +1637,32 @@ var uikit = createCommonjsModule(function (module, exports) {
         );
     }
 
-    function position(element, parent) {
+    function position(element) {
 
-        element = toNode(element);
-        parent = parent || element.offsetParent || element.documentElement;
+        var ref = offset(element);
+        var top = ref.top;
+        var left = ref.left;
 
-        var elementOffset = offset(element);
-        var parentOffset = offset(parent);
+        var ref$1 = toNode(element);
+        var ref$1_ownerDocument = ref$1.ownerDocument;
+        var body = ref$1_ownerDocument.body;
+        var documentElement = ref$1_ownerDocument.documentElement;
+        var offsetParent = ref$1.offsetParent;
+        var parent = offsetParent || documentElement;
+
+        while (parent && (parent === body || parent === documentElement) && css(parent, 'position') === 'static') {
+            parent = parent.parentNode;
+        }
+
+        if (isElement(parent)) {
+            var parentOffset = offset(parent);
+            top -= parentOffset.top + toFloat(css(parent, 'borderTopWidth'));
+            left -= parentOffset.left + toFloat(css(parent, 'borderLeftWidth'));
+        }
 
         return {
-            top: elementOffset.top - parentOffset.top - toFloat(css(parent, 'borderTopWidth')),
-            left: elementOffset.left - parentOffset.left - toFloat(css(parent, 'borderLeftWidth'))
+            top: top - toFloat(css(element, 'marginTop')),
+            left: left - toFloat(css(element, 'marginLeft'))
         };
     }
 
@@ -1793,7 +1790,8 @@ var uikit = createCommonjsModule(function (module, exports) {
         },
 
         clear: function(task) {
-            return remove$1(this.reads, task) || remove$1(this.writes, task);
+            remove$1(this.reads, task);
+            remove$1(this.writes, task);
         },
 
         flush: flush
@@ -1804,7 +1802,7 @@ var uikit = createCommonjsModule(function (module, exports) {
         if ( recursion === void 0 ) recursion = 1;
 
         runTasks(fastdom.reads);
-        runTasks(fastdom.writes.splice(0, fastdom.writes.length));
+        runTasks(fastdom.writes.splice(0));
 
         fastdom.scheduled = false;
 
@@ -1832,13 +1830,17 @@ var uikit = createCommonjsModule(function (module, exports) {
     function runTasks(tasks) {
         var task;
         while ((task = tasks.shift())) {
-            task();
+            try {
+                task();
+            } catch (e) {
+                console.error(e);
+            }
         }
     }
 
     function remove$1(array, item) {
         var index = array.indexOf(item);
-        return !!~index && !!array.splice(index, 1);
+        return ~index && array.splice(index, 1);
     }
 
     function MouseTracker() {}
@@ -2252,10 +2254,15 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             var scrollTop = scrollElement.scrollTop;
             var scrollHeight = scrollElement.scrollHeight;
-            var viewport = getViewport(scrollElement);
-            var maxScroll = scrollHeight - height(viewport);
+            var maxScroll = scrollHeight - getViewportClientHeight(scrollElement);
 
-            var top = Math.ceil(position(parents[i - 1] || element, viewport).top - offsetBy) + diff + scrollTop;
+            var top = Math.ceil(
+                offset(parents[i - 1] || element).top
+                - offset(getViewport(scrollElement)).top
+                - offsetBy
+                + diff
+                + scrollTop
+            );
 
             if (top > maxScroll) {
                 diff = top - maxScroll;
@@ -2310,20 +2317,19 @@ var uikit = createCommonjsModule(function (module, exports) {
             return 0;
         }
 
-        var ref = scrollParents(element, /auto|scroll/);
+        var ref = scrollParents(element, /auto|scroll/, true);
         var scrollElement = ref[0];
         var scrollHeight = scrollElement.scrollHeight;
         var scrollTop = scrollElement.scrollTop;
-        var viewport = getViewport(scrollElement);
-        var viewportHeight = height(viewport);
+        var clientHeight = getViewportClientHeight(scrollElement);
         var viewportTop = offsetPosition(element)[0] - scrollTop - offsetPosition(scrollElement)[0];
-        var viewportDist = Math.min(viewportHeight, viewportTop + scrollTop);
+        var viewportDist = Math.min(clientHeight, viewportTop + scrollTop);
 
         var top = viewportTop - viewportDist;
         var dist = Math.min(
-            height(element) + heightOffset + viewportDist,
+            element.offsetHeight + heightOffset + viewportDist,
             scrollHeight - (viewportTop + scrollTop),
-            scrollHeight - viewportHeight
+            scrollHeight - clientHeight
         );
 
         return clamp(-1 * top / dist);
@@ -2343,12 +2349,17 @@ var uikit = createCommonjsModule(function (module, exports) {
             ancestors = ancestors.slice(fixedIndex);
         }
 
-        return [scrollEl].concat(ancestors.filter(function (parent) { return overflowRe.test(css(parent, 'overflow')) && (!scrollable || parent.scrollHeight > height(parent)); }
-        )).reverse();
+        return [scrollEl].concat(ancestors.filter(function (parent) { return overflowRe.test(css(parent, 'overflow')) && (!scrollable || parent.scrollHeight > getViewportClientHeight(parent)); })
+        ).reverse();
     }
 
     function getViewport(scrollElement) {
         return scrollElement === getScrollingElement(scrollElement) ? window : scrollElement;
+    }
+
+    // iOS 12 returns <body> as scrollingElement
+    function getViewportClientHeight(scrollElement) {
+        return (scrollElement === getScrollingElement(scrollElement) ? document.documentElement : scrollElement).clientHeight;
     }
 
     function getScrollingElement(element) {
@@ -2391,7 +2402,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
         if (flip) {
 
-            var boundaries = scrollParents(target).map(getViewport);
+            var boundaries = scrollParents(element).map(getViewport);
 
             if (boundary && includes(boundaries, boundary)) {
                 boundaries.unshift(boundary);
@@ -2628,6 +2639,7 @@ var uikit = createCommonjsModule(function (module, exports) {
         pointInRect: pointInRect,
         Dimensions: Dimensions,
         getIndex: getIndex,
+        memoize: memoize,
         MouseTracker: MouseTracker,
         mergeOptions: mergeOptions,
         parseOptions: parseOptions,
@@ -2643,8 +2655,6 @@ var uikit = createCommonjsModule(function (module, exports) {
         findAll: findAll,
         escape: escape,
         css: css,
-        getStyles: getStyles,
-        getStyle: getStyle,
         getCssVar: getCssVar,
         propName: propName,
         isInView: isInView,
@@ -2652,7 +2662,8 @@ var uikit = createCommonjsModule(function (module, exports) {
         scrollIntoView: scrollIntoView,
         scrolledOver: scrolledOver,
         scrollParents: scrollParents,
-        getViewport: getViewport
+        getViewport: getViewport,
+        getViewportClientHeight: getViewportClientHeight
     });
 
     function globalAPI (UIkit) {
@@ -2753,7 +2764,6 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             this._data = {};
             this._computeds = {};
-            this._frames = {reads: {}, writes: {}};
 
             this._initProps();
 
@@ -2779,6 +2789,7 @@ var uikit = createCommonjsModule(function (module, exports) {
             this._callHook('disconnected');
 
             this._connected = false;
+            delete this._watch;
 
         };
 
@@ -2787,70 +2798,40 @@ var uikit = createCommonjsModule(function (module, exports) {
             if ( e === void 0 ) e = 'update';
 
 
-            var type = e.type || e;
-
-            if (includes(['update', 'resize'], type)) {
-                this._callWatches();
-            }
-
-            var updates = this.$options.update;
-            var ref = this._frames;
-            var reads = ref.reads;
-            var writes = ref.writes;
-
-            if (!updates) {
+            if (!this._connected) {
                 return;
             }
 
-            updates.forEach(function (ref, i) {
-                var read = ref.read;
-                var write = ref.write;
-                var events = ref.events;
+            if (e === 'update' || e === 'resize') {
+                this._callWatches();
+            }
 
+            if (!this.$options.update) {
+                return;
+            }
 
-                if (type !== 'update' && !includes(events, type)) {
-                    return;
-                }
+            if (!this._updates) {
+                this._updates = new Set();
+                fastdom.read(function () {
+                    runUpdates.call(this$1, this$1._updates);
+                    delete this$1._updates;
+                });
+            }
 
-                if (read && !includes(fastdom.reads, reads[i])) {
-                    reads[i] = fastdom.read(function () {
-
-                        var result = this$1._connected && read.call(this$1, this$1._data, type);
-
-                        if (result === false && write) {
-                            fastdom.clear(writes[i]);
-                        } else if (isPlainObject(result)) {
-                            assign(this$1._data, result);
-                        }
-                    });
-                }
-
-                if (write && !includes(fastdom.writes, writes[i])) {
-                    writes[i] = fastdom.write(function () { return this$1._connected && write.call(this$1, this$1._data, type); });
-                }
-
-            });
-
+            this._updates.add(e.type || e);
         };
 
         UIkit.prototype._callWatches = function () {
             var this$1 = this;
 
 
-            var ref = this;
-            var _frames = ref._frames;
-
-            if (_frames._watch) {
+            if (this._watch) {
                 return;
             }
 
-            var initital = !hasOwn(_frames, '_watch');
+            var initital = !hasOwn(this, '_watch');
 
-            _frames._watch = fastdom.read(function () {
-
-                if (!this$1._connected) {
-                    return;
-                }
+            this._watch = fastdom.read(function () {
 
                 var ref = this$1;
                 var computed = ref.$options.computed;
@@ -2875,12 +2856,46 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 }
 
-                _frames._watch = null;
+                this$1._watch = null;
 
             });
 
         };
 
+        function runUpdates(types) {
+            var this$1 = this;
+
+
+            var updates = this.$options.update;
+
+            var loop = function ( i ) {
+                var ref = updates[i];
+                var read = ref.read;
+                var write = ref.write;
+                var events = ref.events;
+
+                if (!types.has('update') && (!events || !events.some(function (type) { return types.has(type); }))) {
+                    return;
+                }
+
+                var result = (void 0);
+                if (read) {
+
+                    result = read.call(this$1, this$1._data, types);
+
+                    if (result && isPlainObject(result)) {
+                        assign(this$1._data, result);
+                    }
+                }
+
+                if (write && result !== false) {
+                    fastdom.write(function () { return write.call(this$1, this$1._data, types); });
+                }
+
+            };
+
+            for (var i = 0; i < updates.length; i++) loop( i );
+        }
     }
 
     function stateAPI (UIkit) {
@@ -3151,7 +3166,6 @@ var uikit = createCommonjsModule(function (module, exports) {
 
         function normalizeData(ref, ref$1) {
             var data = ref.data;
-            var el = ref.el;
             var args = ref$1.args;
             var props = ref$1.props; if ( props === void 0 ) props = {};
 
@@ -3308,7 +3322,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
         UIkit.prototype.$getComponent = UIkit.getComponent;
 
-        var names = {};
+        var componentName = memoize(function (name) { return UIkit.prefix + hyphenate(name); });
         Object.defineProperties(UIkit.prototype, {
 
             $container: Object.getOwnPropertyDescriptor(UIkit, 'container'),
@@ -3316,14 +3330,7 @@ var uikit = createCommonjsModule(function (module, exports) {
             $name: {
 
                 get: function() {
-                    var ref = this.$options;
-                    var name = ref.name;
-
-                    if (!names[name]) {
-                        names[name] = UIkit.prefix + hyphenate(name);
-                    }
-
-                    return names[name];
+                    return componentName(this.$options.name);
                 }
 
             }
@@ -3429,11 +3436,11 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     }
 
-    function getComponentName(attribute) {
+    var getComponentName = memoize(function (attribute) {
         return startsWith(attribute, 'uk-') || startsWith(attribute, 'data-uk-')
             ? camelize(attribute.replace('data-uk-', '').replace('uk-', ''))
             : false;
-    }
+    });
 
     var UIkit = function (options) {
         this._init(options);
@@ -3443,7 +3450,7 @@ var uikit = createCommonjsModule(function (module, exports) {
     UIkit.data = '__uikit__';
     UIkit.prefix = 'uk-';
     UIkit.options = {};
-    UIkit.version = '3.6.5';
+    UIkit.version = '3.6.18';
 
     globalAPI(UIkit);
     hooksAPI(UIkit);
@@ -3699,21 +3706,25 @@ var uikit = createCommonjsModule(function (module, exports) {
                                 : this$1.hasTransition
                                     ? toggleHeight(this$1)
                                     : toggleAnimation(this$1)
-                        )(el, show) || Promise.resolve();
+                        )(el, show);
 
-                        addClass(el, show ? this$1.clsEnter : this$1.clsLeave);
+                        var cls = show ? this$1.clsEnter : this$1.clsLeave;
+
+                        addClass(el, cls);
 
                         trigger(el, show ? 'show' : 'hide', [this$1]);
 
-                        promise
-                            .catch(noop)
-                            .then(function () { return removeClass(el, show ? this$1.clsEnter : this$1.clsLeave); });
-
-                        return promise.then(function () {
-                            removeClass(el, show ? this$1.clsEnter : this$1.clsLeave);
+                        var done = function () {
+                            removeClass(el, cls);
                             trigger(el, show ? 'shown' : 'hidden', [this$1]);
                             this$1.$update(el);
-                        });
+                        };
+
+                        return promise ? promise.then(done, function () {
+                            removeClass(el, cls);
+                            return Promise.reject();
+                        }) : done();
+
                     })).then(resolve, noop); }
                 );
             },
@@ -3721,9 +3732,9 @@ var uikit = createCommonjsModule(function (module, exports) {
             isToggled: function(el) {
                 if ( el === void 0 ) el = this.$el;
 
-                return hasClass(this.clsEnter)
+                return hasClass(el, this.clsEnter)
                     ? true
-                    : hasClass(this.clsLeave)
+                    : hasClass(el, this.clsLeave)
                         ? false
                         : this.cls
                             ? hasClass(el, this.cls.split(' ')[0])
@@ -4230,7 +4241,7 @@ var uikit = createCommonjsModule(function (module, exports) {
         data: {
             mode: ['click', 'hover'],
             toggle: '- *',
-            boundary: inBrowser && window,
+            boundary: true,
             boundaryAlign: false,
             delayShow: 0,
             delayHide: 800,
@@ -4244,7 +4255,7 @@ var uikit = createCommonjsModule(function (module, exports) {
             boundary: function(ref, $el) {
                 var boundary = ref.boundary;
 
-                return query(boundary, $el);
+                return boundary === true ? window : query(boundary, $el);
             },
 
             clsDrop: function(ref) {
@@ -4591,7 +4602,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                 if (this.align === 'justify') {
                     var prop = this.getAxis() === 'y' ? 'width' : 'height';
                     css(this.$el, prop, alignTo[prop]);
-                } else if (this.$el.offsetWidth > Math.max(boundary.right - alignTo.left, alignTo.right - boundary.left)) {
+                } else if (this.boundary && this.$el.offsetWidth > Math.max(boundary.right - alignTo.left, alignTo.right - boundary.left)) {
                     addClass(this.$el, ((this.clsDrop) + "-stack"));
                 }
 
@@ -4745,15 +4756,15 @@ var uikit = createCommonjsModule(function (module, exports) {
             },
 
             write: function(ref) {
-                var this$1 = this;
                 var columns = ref.columns;
                 var rows = ref.rows;
 
-                rows.forEach(function (row, i) { return row.forEach(function (el) {
-                        toggleClass(el, this$1.margin, i !== 0);
-                        toggleClass(el, this$1.firstColumn, includes(columns[0], el));
-                    }); }
-                );
+                for (var i = 0; i < rows.length; i++) {
+                    for (var j = 0; j < rows[i].length; j++) {
+                        toggleClass(rows[i][j], this.margin, i !== 0);
+                        toggleClass(rows[i][j], this.firstColumn, !!~columns[0].indexOf(rows[i][j]));
+                    }
+                }
             },
 
             events: ['resize']
@@ -4768,11 +4779,14 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     function getColumns(rows) {
 
-        var columns = [[]];
+        var columns = [];
 
-        rows.forEach(function (row) { return sortBy$1(row, 'left', 'right').forEach(function (column, i) { return columns[i] = !columns[i] ? column : columns[i].concat(column); }
-            ); }
-        );
+        for (var i = 0; i < rows.length; i++) {
+            var sorted = sortBy$1(rows[i], 'left', 'right');
+            for (var j = 0; j < sorted.length; j++) {
+                columns[j] = !columns[j] ? sorted[j] : columns[j].concat(sorted[j]);
+            }
+        }
 
         return isRtl
             ? columns.reverse()
@@ -4894,20 +4908,20 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             {
 
-                read: function(ref) {
-                    var columns = ref.columns;
-                    var rows = ref.rows;
+                read: function(data) {
 
-
-                    var nodes = children(this.$el);
+                    var columns = data.columns;
+                    var rows = data.rows;
 
                     // Filter component makes elements positioned absolute
-                    if (!nodes.length || !this.masonry && !this.parallax || positionedAbsolute(this.$el)) {
+                    if (!columns.length || !this.masonry && !this.parallax || positionedAbsolute(this.$el)) {
+                        data.translates = false;
                         return false;
                     }
 
                     var translates = false;
 
+                    var nodes = children(this.$el);
                     var columnHeights = getColumnHeights(columns);
                     var margin = getMarginTop(nodes, this.margin) * (rows.length - 1);
                     var elHeight = Math.max.apply(Math, columnHeights) + margin;
@@ -4946,8 +4960,13 @@ var uikit = createCommonjsModule(function (module, exports) {
                 read: function(ref) {
                     var height$1 = ref.height;
 
+
+                    if (positionedAbsolute(this.$el)) {
+                        return false;
+                    }
+
                     return {
-                        scrolled: this.parallax && !positionedAbsolute(this.$el)
+                        scrolled: this.parallax
                             ? scrolledOver(this.$el, height$1 ? height$1 - height(this.$el) : 0) * Math.abs(this.parallax)
                             : false
                     };
@@ -5146,16 +5165,19 @@ var uikit = createCommonjsModule(function (module, exports) {
         return {heights: heights, elements: elements};
     }
 
-    var clsBlock = 'uk-display-block';
     function getHeight(element) {
 
+        var style = false;
         if (!isVisible(element)) {
-            addClass(element, clsBlock);
+            style = element.style.display;
+            css(element, 'display', 'block', 'important');
         }
 
         var height = dimensions(element).height - boxModelAdjust(element, 'height', 'content-box');
 
-        removeClass(element, clsBlock);
+        if (style !== false) {
+            css(element, 'display', style);
+        }
 
         return height;
     }
@@ -5192,12 +5214,6 @@ var uikit = createCommonjsModule(function (module, exports) {
                 var box = boxModelAdjust(this.$el, 'height', 'content-box');
 
                 if (this.expand) {
-
-                    this.$el.dataset.heightExpand = '';
-
-                    if ($('[data-height-expand]') !== this.$el) {
-                        return false;
-                    }
 
                     minHeight = height(window) - (dimensions(document.documentElement).height - dimensions(this.$el).height) - box || '';
 
@@ -5301,8 +5317,20 @@ var uikit = createCommonjsModule(function (module, exports) {
             }
 
             this.svg = this.getSvg().then(function (el) {
-                this$1.applyAttributes(el);
-                return this$1.svgEl = insertSVG(el, this$1.$el);
+
+                if (this$1._connected) {
+
+                    var svg = insertSVG(el, this$1.$el);
+
+                    if (this$1.svgEl && svg !== this$1.svgEl) {
+                        remove(this$1.svgEl);
+                    }
+
+                    this$1.applyAttributes(svg, el);
+                    this$1.$emit();
+                    return this$1.svgEl = svg;
+                }
+
             }, noop);
 
         },
@@ -5311,15 +5339,19 @@ var uikit = createCommonjsModule(function (module, exports) {
             var this$1 = this;
 
 
-            if (isVoidElement(this.$el)) {
-                this.$el.hidden = false;
-            }
+            this.svg.then(function (svg) {
+                if (!this$1._connected) {
 
-            if (this.svg) {
-                this.svg.then(function (svg) { return (!this$1._connected || svg !== this$1.svgEl) && remove(svg); }, noop);
-            }
+                    if (isVoidElement(this$1.$el)) {
+                        this$1.$el.hidden = false;
+                    }
 
-            this.svg = this.svgEl = null;
+                    remove(svg);
+                    this$1.svgEl = null;
+                }
+            });
+
+            this.svg = null;
 
         },
 
@@ -5346,20 +5378,20 @@ var uikit = createCommonjsModule(function (module, exports) {
                 );
             },
 
-            applyAttributes: function(el) {
+            applyAttributes: function(el, ref) {
                 var this$1 = this;
 
 
                 for (var prop in this.$options.props) {
-                    if (this[prop] && includes(this.include, prop)) {
+                    if (includes(this.include, prop) && (prop in this)) {
                         attr(el, prop, this[prop]);
                     }
                 }
 
                 for (var attribute in this.attributes) {
-                    var ref = this.attributes[attribute].split(':', 2);
-                    var prop$1 = ref[0];
-                    var value = ref[1];
+                    var ref$1 = this.attributes[attribute].split(':', 2);
+                    var prop$1 = ref$1[0];
+                    var value = ref$1[1];
                     attr(el, prop$1, value);
                 }
 
@@ -5368,27 +5400,19 @@ var uikit = createCommonjsModule(function (module, exports) {
                 }
 
                 var props = ['width', 'height'];
-                var dimensions = [this.width, this.height];
+                var dimensions = props.map(function (prop) { return this$1[prop]; });
 
                 if (!dimensions.some(function (val) { return val; })) {
-                    dimensions = props.map(function (prop) { return attr(el, prop); });
+                    dimensions = props.map(function (prop) { return attr(ref, prop); });
                 }
 
-                var viewBox = attr(el, 'viewBox');
+                var viewBox = attr(ref, 'viewBox');
                 if (viewBox && !dimensions.some(function (val) { return val; })) {
                     dimensions = viewBox.split(' ').slice(2);
                 }
 
-                dimensions.forEach(function (val, i) {
-                    val = (val | 0) * this$1.ratio;
-                    val && attr(el, props[i], val);
-
-                    if (val && !dimensions[i ^ 1]) {
-                        removeAttr(el, props[i ^ 1]);
-                    }
-                });
-
-                attr(el, 'data-svg', this.icon || this.src);
+                dimensions.forEach(function (val, i) { return attr(el, props[i], toFloat(val) * this$1.ratio || null); }
+                );
 
             }
 
@@ -5396,15 +5420,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     };
 
-    var svgs = {};
-
-    function loadSVG(src) {
-
-        if (svgs[src]) {
-            return svgs[src];
-        }
-
-        return svgs[src] = new Promise(function (resolve, reject) {
+    var loadSVG = memoize(function (src) { return new Promise(function (resolve, reject) {
 
             if (!src) {
                 reject();
@@ -5421,9 +5437,8 @@ var uikit = createCommonjsModule(function (module, exports) {
                 );
 
             }
-
-        });
-    }
+        }); }
+    );
 
     function parseSVG(svg, icon) {
 
@@ -5496,7 +5511,15 @@ var uikit = createCommonjsModule(function (module, exports) {
     }
 
     function equals(el, other) {
-        return attr(el, 'data-svg') === attr(other, 'data-svg');
+        return isSVG(el) && isSVG(other) && innerHTML(el) === innerHTML(other);
+    }
+
+    function isSVG(el) {
+        return el && el.tagName === 'svg';
+    }
+
+    function innerHTML(el) {
+        return (el.innerHTML || (new XMLSerializer()).serializeToString(el).replace(/<svg.*?>(.*?)<\/svg>/g, '$1')).replace(/\s/g, '');
     }
 
     var closeIcon = "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" xmlns=\"http://www.w3.org/2000/svg\"><line fill=\"none\" stroke=\"#000\" stroke-width=\"1.1\" x1=\"1\" y1=\"1\" x2=\"13\" y2=\"13\"/><line fill=\"none\" stroke=\"#000\" stroke-width=\"1.1\" x1=\"13\" y1=\"1\" x2=\"1\" y2=\"13\"/></svg>";
@@ -5519,13 +5542,13 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     var searchNavbar = "<svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><circle fill=\"none\" stroke=\"#000\" stroke-width=\"1.1\" cx=\"10.5\" cy=\"10.5\" r=\"9.5\"/><line fill=\"none\" stroke=\"#000\" stroke-width=\"1.1\" x1=\"23\" y1=\"23\" x2=\"17\" y2=\"17\"/></svg>";
 
-    var slidenavNext = "<svg width=\"14px\" height=\"24px\" viewBox=\"0 0 14 24\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" points=\"1.225,23 12.775,12 1.225,1 \"/></svg>";
+    var slidenavNext = "<svg width=\"14\" height=\"24\" viewBox=\"0 0 14 24\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" points=\"1.225,23 12.775,12 1.225,1 \"/></svg>";
 
-    var slidenavNextLarge = "<svg width=\"25px\" height=\"40px\" viewBox=\"0 0 25 40\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"2\" points=\"4.002,38.547 22.527,20.024 4,1.5 \"/></svg>";
+    var slidenavNextLarge = "<svg width=\"25\" height=\"40\" viewBox=\"0 0 25 40\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"2\" points=\"4.002,38.547 22.527,20.024 4,1.5 \"/></svg>";
 
-    var slidenavPrevious = "<svg width=\"14px\" height=\"24px\" viewBox=\"0 0 14 24\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" points=\"12.775,1 1.225,12 12.775,23 \"/></svg>";
+    var slidenavPrevious = "<svg width=\"14\" height=\"24\" viewBox=\"0 0 14 24\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" points=\"12.775,1 1.225,12 12.775,23 \"/></svg>";
 
-    var slidenavPreviousLarge = "<svg width=\"25px\" height=\"40px\" viewBox=\"0 0 25 40\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"2\" points=\"20.527,1.5 2,20.024 20.525,38.547 \"/></svg>";
+    var slidenavPreviousLarge = "<svg width=\"25\" height=\"40\" viewBox=\"0 0 25 40\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" stroke-width=\"2\" points=\"20.527,1.5 2,20.024 20.525,38.547 \"/></svg>";
 
     var spinner = "<svg width=\"30\" height=\"30\" viewBox=\"0 0 30 30\" xmlns=\"http://www.w3.org/2000/svg\"><circle fill=\"none\" stroke=\"#000\" cx=\"15\" cy=\"15\" r=\"14\"/></svg>";
 
@@ -5666,7 +5689,7 @@ var uikit = createCommonjsModule(function (module, exports) {
         connected: function() {
             var this$1 = this;
 
-            this.svg.then(function (svg) { return this$1.ratio !== 1 && css($('circle', svg), 'strokeWidth', 1 / this$1.ratio); }, noop);
+            this.svg.then(function (svg) { return svg && this$1.ratio !== 1 && css($('circle', svg), 'strokeWidth', 1 / this$1.ratio); });
         }
 
     };
@@ -6227,7 +6250,9 @@ var uikit = createCommonjsModule(function (module, exports) {
                     var this$1 = this;
 
 
-                    if (width(window) - width(document) && this.overlay) {
+                    var docEl = document.documentElement;
+
+                    if (width(window) > docEl.clientWidth && this.overlay) {
                         css(document.body, 'overflowY', 'scroll');
                     }
 
@@ -6235,7 +6260,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                         css(this.$el, 'zIndex', toFloat(css(this.$el, 'zIndex')) + active$1.length);
                     }
 
-                    addClass(document.documentElement, this.clsPage);
+                    addClass(docEl, this.clsPage);
 
                     if (this.bgClose) {
                         once(this.$el, 'hide', on(document, pointerDown, function (ref) {
@@ -6280,7 +6305,9 @@ var uikit = createCommonjsModule(function (module, exports) {
                     var this$1 = this;
 
 
-                    active$1.splice(active$1.indexOf(this), 1);
+                    if (includes(active$1, this)) {
+                        active$1.splice(active$1.indexOf(this), 1);
+                    }
 
                     if (!active$1.length) {
                         css(document.body, 'overflowY', '');
@@ -6306,7 +6333,6 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             show: function() {
                 var this$1 = this;
-
 
                 if (this.container && parent(this.$el) !== this.container) {
                     append(this.container, this.$el);
@@ -7173,7 +7199,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                 }
 
                 e.preventDefault();
-                this.scrollTo(escape(decodeURIComponent(this.$el.hash)).substr(1));
+                this.scrollTo(("#" + (escape(decodeURIComponent((this.$el.hash || '').substr(1))))));
             }
 
         }
@@ -7389,8 +7415,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                     var scrollElement = ref$1[0];
                     var scrollTop = scrollElement.scrollTop;
                     var scrollHeight = scrollElement.scrollHeight;
-                    var viewport = getViewport(scrollElement);
-                    var max = scrollHeight - height(viewport);
+                    var max = scrollHeight - getViewportClientHeight(scrollElement);
                     var active = false;
 
                     if (scrollTop === max) {
@@ -7398,7 +7423,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                     } else {
 
                         this.targets.every(function (el, i) {
-                            if (position(el, viewport).top - this$1.offset <= 0) {
+                            if (offset(el).top - offset(getViewport(scrollElement)).top - this$1.offset <= 0) {
                                 active = i;
                                 return true;
                             }
@@ -7531,7 +7556,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 name: 'load hashchange popstate',
 
-                el: inBrowser && window,
+                el: function() {
+                    return window;
+                },
 
                 handler: function() {
                     var this$1 = this;
@@ -7568,7 +7595,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             {
 
-                read: function(ref, type) {
+                read: function(ref, types) {
                     var height = ref.height;
 
 
@@ -7578,7 +7605,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                         return false;
                     }
 
-                    if (this.isActive && type !== 'update') {
+                    if (this.isActive && types.has('resize')) {
                         this.hide();
                         height = this.$el.offsetHeight;
                         this.show();
@@ -7639,11 +7666,12 @@ var uikit = createCommonjsModule(function (module, exports) {
                     };
                 },
 
-                write: function(data, type) {
+                write: function(data, types) {
                     var this$1 = this;
 
 
                     var now = Date.now();
+                    var isScrollUpdate = types.has('scroll');
                     var initTimestamp = data.initTimestamp; if ( initTimestamp === void 0 ) initTimestamp = 0;
                     var dir = data.dir;
                     var lastDir = data.lastDir;
@@ -7653,7 +7681,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                     data.lastScroll = scroll;
 
-                    if (scroll < 0 || scroll === lastScroll && type === 'scroll' || this.showOnUp && type !== 'scroll' && !this.isFixed) {
+                    if (scroll < 0 || scroll === lastScroll && isScrollUpdate || this.showOnUp && !isScrollUpdate && !this.isFixed) {
                         return;
                     }
 
@@ -7670,7 +7698,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                     if (this.inactive
                         || scroll < this.top
-                        || this.showOnUp && (scroll <= this.top || dir === 'down' && type === 'scroll' || dir === 'up' && !this.isFixed && scroll <= this.bottomOffset)
+                        || this.showOnUp && (scroll <= this.top || dir === 'down' && isScrollUpdate || dir === 'up' && !this.isFixed && scroll <= this.bottomOffset)
                     ) {
 
                         if (!this.isFixed) {
@@ -7814,9 +7842,18 @@ var uikit = createCommonjsModule(function (module, exports) {
                 },
 
                 watch: function(connects) {
+                    var this$1 = this;
+
+
                     if (this.swiping) {
                         css(connects, 'touch-action', 'pan-y pinch-zoom');
                     }
+
+                    var index = this.index();
+                    this.connects.forEach(function (el) { return children(el).forEach(function (child, i) { return toggleClass(child, this$1.cls, i === index); }
+                        ); }
+                    );
+
                 },
 
                 immediate: true
@@ -7833,7 +7870,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 watch: function(toggles) {
                     var active = this.index();
-                    this.show(~active && active || toggles[this.active] || toggles[0]);
+                    this.show(~active ? active : toggles[this.active] || toggles[0]);
                 },
 
                 immediate: true
@@ -7932,7 +7969,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                 this.connects.forEach(function (ref) {
                         var children = ref.children;
 
-                        return this$1.toggleElement(toNodes(children).filter(function (child, i) { return i !== next && this$1.isToggled(child); }
+                        return this$1.toggleElement(toNodes(children).filter(function (child) { return hasClass(child, this$1.cls); }
                     ), false, prev >= 0).then(function () { return this$1.toggleElement(children[next], true, prev >= 0); }
                     );
                 }
@@ -8271,7 +8308,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 name: 'visibilitychange',
 
-                el: inBrowser && document,
+                el: function() {
+                    return document;
+                },
 
                 handler: function() {
                     if (document.hidden) {
@@ -8370,7 +8409,7 @@ var uikit = createCommonjsModule(function (module, exports) {
     var clsEnter = 'uk-transition-enter';
 
     function fade(action, target, duration, stagger) {
-        if ( stagger === void 0 ) stagger = 40;
+        if ( stagger === void 0 ) stagger = 0;
 
 
         var index = transitionIndex(target, true);
@@ -8398,12 +8437,14 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             css(children(target), {opacity: 0});
 
-            return new Promise(function (resolve) {
-                requestAnimationFrame(function () {
+            // Ensure UIkit updates have propagated
+            return new Promise(function (resolve) { return requestAnimationFrame(function () {
 
                     var nodes = children(target);
                     var newHeight = height(target);
 
+                    // Ensure Grid cells do not stretch when height is applied
+                    css(target, 'alignContent', 'flex-start');
                     height(target, oldHeight);
 
                     var transitionNodes = getTransitionNodes(target);
@@ -8420,14 +8461,14 @@ var uikit = createCommonjsModule(function (module, exports) {
                     Promise.all(transitions).then(function () {
                         removeClass(target, clsEnter);
                         if (index === transitionIndex(target)) {
-                            css(target, 'height', '');
+                            css(target, {height: '', alignContent: ''});
                             css(nodes, {opacity: ''});
                             delete target.dataset.transition;
                         }
                         resolve();
                     });
-                });
-            });
+                }); }
+            );
         });
 
         return hasClass(target, clsLeave)
@@ -8454,58 +8495,57 @@ var uikit = createCommonjsModule(function (module, exports) {
         return getRows(children(target)).reduce(function (nodes, row) { return nodes.concat(sortBy(row.filter(function (el) { return isInView(el); }), 'offsetLeft')); }, []);
     }
 
-    var targetClass = 'uk-animation-target';
-
     function slide (action, target, duration) {
 
-        addStyle();
-
-        var nodes = children(target);
-
-        // Get current state
-        var currentProps = nodes.map(function (el) { return getProps(el, true); });
-        var oldHeight = height(target);
-
-        // Cancel previous animations
-        Transition.cancel(target);
-        nodes.forEach(Transition.cancel);
-        removeClass(target, targetClass);
-        reset(target);
-
-        // Adding, sorting, removing nodes
-        action();
-
-        // Gind new nodes
-        nodes = nodes.concat(children(target).filter(function (el) { return !includes(nodes, el); }));
-
-        // Gorce update
-        trigger(toWindow(target), 'resize');
-        fastdom.flush();
-
-        // Get new state
-        var newHeight = height(target);
-        var ref = getTransitionProps(target, nodes, currentProps);
-        var propsTo = ref[0];
-        var propsFrom = ref[1];
-
-        // Reset to previous state
-        addClass(target, targetClass);
-        nodes.forEach(function (el, i) { return propsFrom[i] && css(el, propsFrom[i]); });
-        css(target, {height: oldHeight, display: 'block'});
-
-        // Start transitions on next frame
         return new Promise(function (resolve) { return requestAnimationFrame(function () {
 
-                var transitions = nodes.map(function (el, i) { return Transition.start(el, propsTo[i], duration, 'ease'); }
-                    ).concat(Transition.start(target, {height: newHeight}, duration, 'ease'));
+                var nodes = children(target);
 
-                Promise.all(transitions).then(function () {
-                    nodes.forEach(function (el, i) { return css(el, 'display', propsTo[i].opacity === 0 ? 'none' : ''); });
-                    reset(target);
-                }, noop).then(resolve);
+                // Get current state
+                var currentProps = nodes.map(function (el) { return getProps(el, true); });
+                var targetProps = css(target, ['height', 'padding']);
 
-            }); }
-        );
+                // Cancel previous animations
+                Transition.cancel(target);
+                nodes.forEach(Transition.cancel);
+                reset(target);
+
+                // Adding, sorting, removing nodes
+                action();
+
+                // Find new nodes
+                nodes = nodes.concat(children(target).filter(function (el) { return !includes(nodes, el); }));
+
+                // Wait for update to propagate
+                Promise.resolve().then(function () {
+
+                    // Force update
+                    fastdom.flush();
+
+                    // Get new state
+                    var targetPropsTo = css(target, ['height', 'padding']);
+                    var ref = getTransitionProps(target, nodes, currentProps);
+                    var propsTo = ref[0];
+                    var propsFrom = ref[1];
+
+                    // Reset to previous state
+                    nodes.forEach(function (el, i) { return propsFrom[i] && css(el, propsFrom[i]); });
+                    css(target, assign({display: 'block'}, targetProps));
+
+                    // Start transitions on next frame
+                    requestAnimationFrame(function () {
+
+                        var transitions = nodes.map(function (el, i) { return parent(el) === target && Transition.start(el, propsTo[i], duration, 'ease'); }
+                            ).concat(Transition.start(target, targetPropsTo, duration, 'ease'));
+
+                        Promise.all(transitions).then(function () {
+                            nodes.forEach(function (el, i) { return parent(el) === target && css(el, 'display', propsTo[i].opacity === 0 ? 'none' : ''); });
+                            reset(target);
+                        }, noop).then(resolve);
+
+                    });
+                });
+            }); });
     }
 
     function getProps(el, opacity) {
@@ -8567,11 +8607,13 @@ var uikit = createCommonjsModule(function (module, exports) {
             pointerEvents: '',
             position: '',
             top: '',
+            marginTop: '',
+            marginLeft: '',
+            transform: '',
             width: '',
             zIndex: ''
         });
-        removeClass(el, targetClass);
-        css(el, {height: '', display: ''});
+        css(el, {height: '', display: '', padding: ''});
     }
 
     function getPositionWithMargin(el) {
@@ -8581,17 +8623,11 @@ var uikit = createCommonjsModule(function (module, exports) {
         var ref$1 = position(el);
         var top = ref$1.top;
         var left = ref$1.left;
+        var ref$2 = css(el, ['marginTop', 'marginLeft']);
+        var marginLeft = ref$2.marginLeft;
+        var marginTop = ref$2.marginTop;
 
-        return {top: top, left: left, height: height, width: width};
-    }
-
-    var style;
-
-    function addStyle() {
-        if (style) {
-            return;
-        }
-        style = !!append(document.head, ("<style> ." + targetClass + " > * {\n            margin-top: 0 !important;\n            transform: none !important;\n        } </style>"));
+        return {top: top, left: left, height: height, width: width, marginLeft: marginLeft, marginTop: marginTop, transform: ''};
     }
 
     var Animate = {
@@ -8609,12 +8645,26 @@ var uikit = createCommonjsModule(function (module, exports) {
         methods: {
 
             animate: function(action, target) {
+                var this$1 = this;
                 if ( target === void 0 ) target = this.$el;
 
-                var animationFn = this.animation === 'fade' ? fade : slide;
+
+                var name = this.animation;
+                var animationFn = name === 'fade'
+                    ? fade
+                    : name === 'delayed-fade'
+                        ? function () {
+                            var args = [], len = arguments.length;
+                            while ( len-- ) args[ len ] = arguments[ len ];
+
+                            return fade.apply(void 0, args.concat( [40] ));
+                }
+                        : slide;
+
                 return animationFn(action, target, this.duration)
-                    .then(function () { return trigger(toWindow(target), 'resize'); }, noop);
+                    .then(function () { return this$1.$update(target, 'resize'); }, noop);
             }
+
         }
     };
 
@@ -8644,7 +8694,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                 get: function(ref, $el) {
                     var attrItem = ref.attrItem;
 
-                    return $$(("[" + (this.attrItem) + "],[data-" + (this.attrItem) + "]"), $el);
+                    return $$(("[" + attrItem + "],[data-" + attrItem + "]"), $el);
                 },
 
                 watch: function() {
@@ -8673,10 +8723,13 @@ var uikit = createCommonjsModule(function (module, exports) {
                 },
 
                 watch: function(list, old) {
-                    if (!isEqualList(list, old)) {
+                    if (old && !isEqualList(list, old)) {
                         this.updateState();
                     }
-                }
+                },
+
+                immediate: true
+
             }
 
         },
@@ -8705,7 +8758,12 @@ var uikit = createCommonjsModule(function (module, exports) {
         methods: {
 
             apply: function(el) {
-                this.setState(mergeState(el, this.attrItem, this.getState()));
+                var prevState = this.getState();
+                var newState = mergeState(el, this.attrItem, this.getState());
+
+                if (!isEqualState(prevState, newState)) {
+                    this.setState(newState);
+                }
             },
 
             getState: function() {
@@ -8728,10 +8786,11 @@ var uikit = createCommonjsModule(function (module, exports) {
                 this.toggles.forEach(function (el) { return toggleClass(el, this$1.cls, !!matchFilter(el, this$1.attrItem, state)); });
 
                 Promise.all($$(this.target, this.$el).map(function (target) {
-                    var children$1 = children(target);
-                    return animate
-                        ? this$1.animate(function () { return applyState(state, target, children$1); }, target)
-                        : applyState(state, target, children$1);
+                    var filterFn = function () {
+                        applyState(state, target, children(target));
+                        this$1.$update(this$1.$el);
+                    };
+                    return animate ? this$1.animate(filterFn, target) : filterFn();
                 })).then(function () { return trigger(this$1.$el, 'afterFilter', [this$1]); });
 
             },
@@ -8748,6 +8807,10 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     function getFilter(el, attr) {
         return parseOptions(data(el, attr), ['filter']);
+    }
+
+    function isEqualState(stateA, stateB) {
+        return ['filter', 'sort'].every(function (prop) { return isEqual(stateA[prop], stateB[prop]); });
     }
 
     function applyState(state, target, children) {
@@ -9046,7 +9109,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 name: 'visibilitychange',
 
-                el: inBrowser && document,
+                el: function() {
+                    return document;
+                },
 
                 filter: function() {
                     return this.autoplay;
@@ -9180,9 +9245,10 @@ var uikit = createCommonjsModule(function (module, exports) {
                     this.prevIndex = this.index;
                 }
 
-                // See above workaround notice
                 on(document, pointerMove, this.move, {passive: false});
-                on(document, (pointerUp + " " + pointerCancel), this.end, true);
+
+                // 'input' event is triggered by video controls
+                on(document, (pointerUp + " " + pointerCancel + " input"), this.end, true);
 
                 css(this.list, 'userSelect', 'none');
 
@@ -9198,11 +9264,10 @@ var uikit = createCommonjsModule(function (module, exports) {
                     return;
                 }
 
-                // Workaround for iOS's inert scrolling preventing pointerdown event
-                // https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action
-                if (!this.dragging && hasTouch) {
-                    on(this.list, 'touchmove', preventDefault, {passive: false});
-                }
+                // prevent click event
+                css(this.list, 'pointerEvents', 'none');
+
+                e.cancelable && e.preventDefault();
 
                 this.dragging = true;
                 this.dir = (distance < 0 ? 1 : -1);
@@ -9269,8 +9334,7 @@ var uikit = createCommonjsModule(function (module, exports) {
             end: function() {
 
                 off(document, pointerMove, this.move, {passive: false});
-                off(document, (pointerUp + " " + pointerCancel), this.end, true);
-                off(this.list, 'touchmove', preventDefault, {passive: false});
+                off(document, (pointerUp + " " + pointerCancel + " input"), this.end, true);
 
                 if (this.dragging) {
 
@@ -9309,10 +9373,6 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     function hasTextNodesOnly(el) {
         return !el.children.length && el.childNodes.length;
-    }
-
-    function preventDefault(e) {
-        e.cancelable && e.preventDefault();
     }
 
     var SliderNav = {
@@ -9767,7 +9827,7 @@ var uikit = createCommonjsModule(function (module, exports) {
             caption: function(ref, $el) {
                 var selCaption = ref.selCaption;
 
-                return $('.uk-lightbox-caption', $el);
+                return $(selCaption, $el);
             }
 
         },
@@ -9847,7 +9907,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 name: 'keyup',
 
-                el: inBrowser && document,
+                el: function() {
+                    return document;
+                },
 
                 handler: function(e) {
 
@@ -9947,7 +10009,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                     };
 
                     // Image
-                    if (type === 'image' || src.match(/\.(jpe?g|png|gif|svg|webp)($|\?)/i)) {
+                    if (type === 'image' || src.match(/\.(avif|jpe?g|a?png|gif|svg|webp)($|\?)/i)) {
 
                         getImage(src, attrs.srcset, attrs.size).then(
                             function (ref) {
@@ -10193,6 +10255,8 @@ var uikit = createCommonjsModule(function (module, exports) {
 
     var notification = {
 
+        mixins: [Container],
+
         functional: true,
 
         args: ['message', 'status'],
@@ -10228,8 +10292,8 @@ var uikit = createCommonjsModule(function (module, exports) {
 
         created: function() {
 
-            var container = $(("." + (this.clsContainer) + "-" + (this.pos)), this.$container)
-                || append(this.$container, ("<div class=\"" + (this.clsContainer) + " " + (this.clsContainer) + "-" + (this.pos) + "\" style=\"display: block\"></div>"));
+            var container = $(("." + (this.clsContainer) + "-" + (this.pos)), this.container)
+                || append(this.container, ("<div class=\"" + (this.clsContainer) + " " + (this.clsContainer) + "-" + (this.pos) + "\" style=\"display: block\"></div>"));
 
             this.$mount(append(container,
                 ("<div class=\"" + (this.clsMsg) + (this.status ? (" " + (this.clsMsg) + "-" + (this.status)) : '') + "\"> <a href class=\"" + (this.clsClose) + "\" data-uk-close></a> <div>" + (this.message) + "</div> </div>")
@@ -10452,9 +10516,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                 var this$1 = this;
 
 
-                data.active = this.matchMedia;
-
-                if (!data.active) {
+                if (!this.matchMedia) {
                     return;
                 }
 
@@ -10518,10 +10580,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             write: function(ref) {
                 var dim = ref.dim;
-                var active = ref.active;
 
 
-                if (!active) {
+                if (!this.matchMedia) {
                     css(this.$el, {backgroundSize: '', backgroundRepeat: ''});
                     return;
                 }
@@ -10702,16 +10763,15 @@ var uikit = createCommonjsModule(function (module, exports) {
 
         update: {
 
-            read: function(ref, type) {
+            read: function(ref, types) {
                 var percent = ref.percent;
-                var active = ref.active;
 
 
-                if (type !== 'scroll') {
+                if (!types.has('scroll')) {
                     percent = false;
                 }
 
-                if (!active) {
+                if (!this.matchMedia) {
                     return;
                 }
 
@@ -10726,10 +10786,9 @@ var uikit = createCommonjsModule(function (module, exports) {
 
             write: function(ref) {
                 var style = ref.style;
-                var active = ref.active;
 
 
-                if (!active) {
+                if (!this.matchMedia) {
                     this.reset();
                     return;
                 }
@@ -10963,8 +11022,6 @@ var uikit = createCommonjsModule(function (module, exports) {
             },
 
             maxIndex: function() {
-                var this$1 = this;
-
 
                 if (!this.finite || this.center && !this.sets) {
                     return this.length - 1;
@@ -10974,10 +11031,18 @@ var uikit = createCommonjsModule(function (module, exports) {
                     return last(this.sets);
                 }
 
-                css(this.slides, 'order', '');
-
+                var lft = 0;
                 var max = getMax(this.list);
-                var index = findIndex(this.slides, function (el) { return getElLeft(el, this$1.list) >= max; });
+                var index = findIndex(this.slides, function (el) {
+
+                    if (lft >= max) {
+                        return true;
+                    }
+
+                    lft += dimensions(el).width;
+
+                });
+
                 return ~index ? index : this.length - 1;
             },
 
@@ -11063,8 +11128,10 @@ var uikit = createCommonjsModule(function (module, exports) {
 
                 var actives = this._getTransitioner(this.index).getActives();
                 this.slides.forEach(function (slide) { return toggleClass(slide, this$1.clsActive, includes(actives, slide)); });
-                (!this.sets || includes(this.sets, toFloat(this.index))) && this.slides.forEach(function (slide) { return toggleClass(slide, this$1.clsActivated, includes(actives, slide)); });
 
+                if (this.clsActivated && (!this.sets || includes(this.sets, toFloat(this.index)))) {
+                    this.slides.forEach(function (slide) { return toggleClass(slide, this$1.clsActivated || '', includes(actives, slide)); });
+                }
             },
 
             events: ['resize']
@@ -11559,7 +11626,7 @@ var uikit = createCommonjsModule(function (module, exports) {
 
         update: {
 
-            write: function() {
+            write: function(data) {
 
                 if (!this.drag || !parent(this.placeholder)) {
                     return;
@@ -11597,16 +11664,27 @@ var uikit = createCommonjsModule(function (module, exports) {
                     return;
                 }
 
-                this.touched.add(sortable);
-
                 var previous = this.getSortable(placeholder);
+                var insertTarget = findInsertTarget(sortable.target, target, placeholder, x, y, sortable === previous && data.moved !== target);
+
+                if (insertTarget === false) {
+                    return;
+                }
+
+                if (insertTarget && placeholder === insertTarget) {
+                    return;
+                }
 
                 if (sortable !== previous) {
                     previous.remove(placeholder);
+                    data.moved = target;
+                } else {
+                    delete data.moved;
                 }
 
-                sortable.insert(placeholder, findInsertTarget(sortable.target, target, placeholder, x, y));
+                sortable.insert(placeholder, insertTarget);
 
+                this.touched.add(sortable);
             },
 
             events: ['move']
@@ -11725,10 +11803,6 @@ var uikit = createCommonjsModule(function (module, exports) {
                 var this$1 = this;
 
 
-                if (target && (element === target || element === target.previousElementSibling)) {
-                    return;
-                }
-
                 addClass(this.items, this.clsItem);
 
                 var insert = function () { return target
@@ -11836,54 +11910,78 @@ var uikit = createCommonjsModule(function (module, exports) {
         return items[findIndex(items, function (item) { return pointInRect(point, item.getBoundingClientRect()); })];
     }
 
-    function findInsertTarget(list, target, placeholder, x, y) {
+    function findInsertTarget(list, target, placeholder, x, y, sameList) {
 
-        var items = children(list);
-
-        if (!items.length) {
+        if (!children(list).length) {
             return;
         }
 
-        var single = items.length === 1;
+        var rect = target.getBoundingClientRect();
+        if (!sameList) {
+
+            if (!isHorizontal(list, placeholder)) {
+                return y < rect.top + rect.height / 2
+                    ? target
+                    : target.nextElementSibling;
+            }
+
+            return target;
+        }
+
+        var placeholderRect = placeholder.getBoundingClientRect();
+        var sameRow = linesIntersect(
+            [rect.top, rect.bottom],
+            [placeholderRect.top, placeholderRect.bottom]
+        );
+
+        var pointerPos = sameRow ? x : y;
+        var lengthProp = sameRow ? 'width' : 'height';
+        var startProp = sameRow ? 'left' : 'top';
+        var endProp = sameRow ? 'right' : 'bottom';
+
+        var diff = placeholderRect[lengthProp] < rect[lengthProp] ? rect[lengthProp] - placeholderRect[lengthProp] : 0;
+
+        if (placeholderRect[startProp] < rect[startProp]) {
+
+            if (diff && pointerPos < rect[startProp] + diff) {
+                return false;
+            }
+
+            return target.nextElementSibling;
+        }
+
+        if (diff && pointerPos > rect[endProp] - diff) {
+            return false;
+        }
+
+        return target;
+    }
+
+    function isHorizontal(list, placeholder) {
+
+        var single = children(list).length === 1;
 
         if (single) {
             append(list, placeholder);
         }
 
-        var horizontal = isHorizontal(children(list));
+        var items = children(list);
+        var isHorizontal = items.some(function (el, i) {
+            var rectA = el.getBoundingClientRect();
+            return items.slice(i + 1).some(function (el) {
+                var rectB = el.getBoundingClientRect();
+                return !linesIntersect([rectA.left, rectA.right], [rectB.left, rectB.right]);
+            });
+        });
 
         if (single) {
             remove(placeholder);
         }
 
-        var rect = target.getBoundingClientRect();
-        if (!horizontal) {
-            return y < rect.top + rect.height / 2
-                ? target
-                : target.nextElementSibling;
-        }
-
-        var placeholderRect = placeholder.getBoundingClientRect();
-        var sameLine = intersectLine(
-            [rect.top, rect.bottom],
-            [placeholderRect.top, placeholderRect.bottom]
-        );
-        return sameLine && x > rect.left + rect.width / 2 || !sameLine && placeholderRect.top < rect.top
-            ? target.nextElementSibling
-            : target;
+        return isHorizontal;
     }
 
-    function isHorizontal(items) {
-        return items.some(function (el, i) {
-            var rectA = el.getBoundingClientRect();
-            return items.slice(i + 1).some(function (el) {
-                var rectB = el.getBoundingClientRect();
-                return !intersectLine([rectA.left, rectA.right], [rectB.left, rectB.right]);
-            });
-        });
-    }
-
-    function intersectLine(lineA, lineB) {
+    function linesIntersect(lineA, lineB) {
         return lineA[1] > lineB[0] && lineB[1] > lineA[0];
     }
 
@@ -11932,7 +12030,8 @@ var uikit = createCommonjsModule(function (module, exports) {
                     return;
                 }
 
-                this._unbind = once(document, 'show keydown', this.hide, false, function (e) { return e.type === 'keydown' && e.keyCode === 27
+                this._unbind = once(document, ("show keydown " + pointerDown), this.hide, false, function (e) { return e.type === pointerDown && !within(e.target, this$1.$el)
+                    || e.type === 'keydown' && e.keyCode === 27
                     || e.type === 'show' && e.detail[0] !== this$1 && e.detail[0].$name === this$1.$name; }
                 );
 
@@ -11999,12 +12098,13 @@ var uikit = createCommonjsModule(function (module, exports) {
             blur: 'hide'
 
         }, obj$1[(pointerEnter + " " + pointerLeave)] = function (e) {
-                if (isTouch(e)) {
-                    return;
+                if (!isTouch(e)) {
+                    this[e.type === pointerEnter ? 'show' : 'hide']();
                 }
-                e.type === pointerEnter
-                    ? this.show()
-                    : this.hide();
+            }, obj$1[pointerDown] = function (e) {
+                if (isTouch(e)) {
+                    this.show();
+                }
             }, obj$1 )
 
     };
@@ -12172,7 +12272,7 @@ var uikit = createCommonjsModule(function (module, exports) {
                             ['loadStart', 'load', 'loadEnd', 'abort'].forEach(function (type) { return on(xhr, type.toLowerCase(), this$1[type]); }
                             );
 
-                            this$1.beforeSend(env);
+                            return this$1.beforeSend(env);
 
                         }
                     }).then(
@@ -12246,12 +12346,12 @@ var uikit = createCommonjsModule(function (module, exports) {
 })));
 });
 
-/*! UIkit 3.6.5 | https://www.getuikit.com | (c) 2014 - 2020 YOOtheme | MIT License */
+/*! UIkit 3.6.18 | https://www.getuikit.com | (c) 2014 - 2021 YOOtheme | MIT License */
 
-var uikitIcons = createCommonjsModule(function (module, exports) {
+createCommonjsModule(function (module, exports) {
 (function (global, factory) {
-     module.exports = factory() ;
-}(commonjsGlobal, (function () {
+    module.exports = factory() ;
+}(commonjsGlobal$1, (function () {
     function plugin(UIkit) {
 
         if (plugin.installed) {
@@ -12294,6 +12394,7 @@ var uikitIcons = createCommonjsModule(function (module, exports) {
         "credit-card": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"none\" stroke=\"#000\" x=\"1.5\" y=\"4.5\" width=\"17\" height=\"12\"/><rect x=\"1\" y=\"7\" width=\"18\" height=\"3\"/></svg>",
         "database": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><ellipse fill=\"none\" stroke=\"#000\" cx=\"10\" cy=\"4.64\" rx=\"7.5\" ry=\"3.14\"/><path fill=\"none\" stroke=\"#000\" d=\"M17.5,8.11 C17.5,9.85 14.14,11.25 10,11.25 C5.86,11.25 2.5,9.84 2.5,8.11\"/><path fill=\"none\" stroke=\"#000\" d=\"M17.5,11.25 C17.5,12.99 14.14,14.39 10,14.39 C5.86,14.39 2.5,12.98 2.5,11.25\"/><path fill=\"none\" stroke=\"#000\" d=\"M17.49,4.64 L17.5,14.36 C17.5,16.1 14.14,17.5 10,17.5 C5.86,17.5 2.5,16.09 2.5,14.36 L2.5,4.64\"/></svg>",
         "desktop": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"8\" y=\"15\" width=\"1\" height=\"2\"/><rect x=\"11\" y=\"15\" width=\"1\" height=\"2\"/><rect x=\"5\" y=\"16\" width=\"10\" height=\"1\"/><rect fill=\"none\" stroke=\"#000\" x=\"1.5\" y=\"3.5\" width=\"17\" height=\"11\"/></svg>",
+        "discord": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M15.68,1H3.81A1.81,1.81,0,0,0,2,2.81V14.68a1.81,1.81,0,0,0,1.81,1.81h10l-.47-1.62,1.14,1.05,1.07,1,1.91,1.65V2.81A1.82,1.82,0,0,0,15.68,1ZM12.26,12.46l-.58-.7a2.85,2.85,0,0,0,1.6-1,4.92,4.92,0,0,1-1,.52,6.23,6.23,0,0,1-3.58.37,6.5,6.5,0,0,1-1.3-.38,4.53,4.53,0,0,1-.64-.3l-.08,0,0,0-.25-.15a2.84,2.84,0,0,0,1.55,1c-.26.33-.59.72-.59.72a3.21,3.21,0,0,1-2.7-1.33A11.71,11.71,0,0,1,5.9,6,4.37,4.37,0,0,1,8.38,5.1l.09.1A5.91,5.91,0,0,0,6.15,6.36s.2-.11.52-.25a7,7,0,0,1,2-.56l.15,0a7.58,7.58,0,0,1,1.79,0,7.38,7.38,0,0,1,2.67.85,5.76,5.76,0,0,0-2.21-1.12l.13-.14A4.31,4.31,0,0,1,13.68,6,11.64,11.64,0,0,1,15,11.14,3.25,3.25,0,0,1,12.26,12.46Z\"/><path d=\"M8.14,8.36a1,1,0,1,0,.91,1A.94.94,0,0,0,8.14,8.36Zm3.23,0a1,1,0,1,0,.91,1A.94.94,0,0,0,11.37,8.36Z\"/></svg>",
         "download": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" points=\"14,10 9.5,14.5 5,10\"/><rect x=\"3\" y=\"17\" width=\"13\" height=\"1\"/><line fill=\"none\" stroke=\"#000\" x1=\"9.5\" y1=\"13.91\" x2=\"9.5\" y2=\"3\"/></svg>",
         "dribbble": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" d=\"M1.3,8.9c0,0,5,0.1,8.6-1c1.4-0.4,2.6-0.9,4-1.9 c1.4-1.1,2.5-2.5,2.5-2.5\"/><path fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" d=\"M3.9,16.6c0,0,1.7-2.8,3.5-4.2 c1.8-1.3,4-2,5.7-2.2C16,10,19,10.6,19,10.6\"/><path fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" d=\"M6.9,1.6c0,0,3.3,4.6,4.2,6.8 c0.4,0.9,1.3,3.1,1.9,5.2c0.6,2,0.9,4.4,0.9,4.4\"/><circle fill=\"none\" stroke=\"#000\" stroke-width=\"1.4\" cx=\"10\" cy=\"10\" r=\"9\"/></svg>",
         "etsy": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><path d=\"M8,4.26C8,4.07,8,4,8.31,4h4.46c.79,0,1.22.67,1.53,1.91l.25,1h.76c.14-2.82.26-4,.26-4S13.65,3,12.52,3H6.81L3.75,2.92v.84l1,.2c.73.11.9.27,1,1,0,0,.06,2,.06,5.17s-.06,5.14-.06,5.14c0,.59-.23.81-1,.94l-1,.2v.84l3.06-.1h5.11c1.15,0,3.82.1,3.82.1,0-.7.45-3.88.51-4.22h-.73l-.76,1.69a2.25,2.25,0,0,1-2.45,1.47H9.4c-1,0-1.44-.4-1.44-1.24V10.44s2.16,0,2.86.06c.55,0,.85.19,1.06,1l.23,1H13L12.9,9.94,13,7.41h-.85l-.28,1.13c-.16.74-.28.84-1,1-1,.1-2.89.09-2.89.09Z\"/></svg>",
@@ -12313,7 +12414,6 @@ var uikitIcons = createCommonjsModule(function (module, exports) {
         "github-alt": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M10,0.5 C4.75,0.5 0.5,4.76 0.5,10.01 C0.5,15.26 4.75,19.51 10,19.51 C15.24,19.51 19.5,15.26 19.5,10.01 C19.5,4.76 15.25,0.5 10,0.5 L10,0.5 Z M12.81,17.69 C12.81,17.69 12.81,17.7 12.79,17.69 C12.47,17.75 12.35,17.59 12.35,17.36 L12.35,16.17 C12.35,15.45 12.09,14.92 11.58,14.56 C12.2,14.51 12.77,14.39 13.26,14.21 C13.87,13.98 14.36,13.69 14.74,13.29 C15.42,12.59 15.76,11.55 15.76,10.17 C15.76,9.25 15.45,8.46 14.83,7.8 C15.1,7.08 15.07,6.29 14.75,5.44 L14.51,5.42 C14.34,5.4 14.06,5.46 13.67,5.61 C13.25,5.78 12.79,6.03 12.31,6.35 C11.55,6.16 10.81,6.05 10.09,6.05 C9.36,6.05 8.61,6.15 7.88,6.35 C7.28,5.96 6.75,5.68 6.26,5.54 C6.07,5.47 5.9,5.44 5.78,5.44 L5.42,5.44 C5.06,6.29 5.04,7.08 5.32,7.8 C4.7,8.46 4.4,9.25 4.4,10.17 C4.4,11.94 4.96,13.16 6.08,13.84 C6.53,14.13 7.05,14.32 7.69,14.43 C8.03,14.5 8.32,14.54 8.55,14.55 C8.07,14.89 7.82,15.42 7.82,16.16 L7.82,17.51 C7.8,17.69 7.7,17.8 7.51,17.8 C4.21,16.74 1.82,13.65 1.82,10.01 C1.82,5.5 5.49,1.83 10,1.83 C14.5,1.83 18.17,5.5 18.17,10.01 C18.18,13.53 15.94,16.54 12.81,17.69 L12.81,17.69 Z\"/></svg>",
         "github": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M10,1 C5.03,1 1,5.03 1,10 C1,13.98 3.58,17.35 7.16,18.54 C7.61,18.62 7.77,18.34 7.77,18.11 C7.77,17.9 7.76,17.33 7.76,16.58 C5.26,17.12 4.73,15.37 4.73,15.37 C4.32,14.33 3.73,14.05 3.73,14.05 C2.91,13.5 3.79,13.5 3.79,13.5 C4.69,13.56 5.17,14.43 5.17,14.43 C5.97,15.8 7.28,15.41 7.79,15.18 C7.87,14.6 8.1,14.2 8.36,13.98 C6.36,13.75 4.26,12.98 4.26,9.53 C4.26,8.55 4.61,7.74 5.19,7.11 C5.1,6.88 4.79,5.97 5.28,4.73 C5.28,4.73 6.04,4.49 7.75,5.65 C8.47,5.45 9.24,5.35 10,5.35 C10.76,5.35 11.53,5.45 12.25,5.65 C13.97,4.48 14.72,4.73 14.72,4.73 C15.21,5.97 14.9,6.88 14.81,7.11 C15.39,7.74 15.73,8.54 15.73,9.53 C15.73,12.99 13.63,13.75 11.62,13.97 C11.94,14.25 12.23,14.8 12.23,15.64 C12.23,16.84 12.22,17.81 12.22,18.11 C12.22,18.35 12.38,18.63 12.84,18.54 C16.42,17.35 19,13.98 19,10 C19,5.03 14.97,1 10,1 L10,1 Z\"/></svg>",
         "gitter": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"3.5\" y=\"1\" width=\"1.531\" height=\"11.471\"/><rect x=\"7.324\" y=\"4.059\" width=\"1.529\" height=\"15.294\"/><rect x=\"11.148\" y=\"4.059\" width=\"1.527\" height=\"15.294\"/><rect x=\"14.971\" y=\"4.059\" width=\"1.529\" height=\"8.412\"/></svg>",
-        "google-plus": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12.9,9c0,2.7-0.6,5-3.2,6.3c-3.7,1.8-8.1,0.2-9.4-3.6C-1.1,7.6,1.9,3.3,6.1,3c1.7-0.1,3.2,0.3,4.6,1.3 c0.1,0.1,0.3,0.2,0.4,0.4c-0.5,0.5-1.2,1-1.7,1.6c-1-0.8-2.1-1.1-3.5-0.9C5,5.6,4.2,6,3.6,6.7c-1.3,1.3-1.5,3.4-0.5,5 c1,1.7,2.6,2.3,4.6,1.9c1.4-0.3,2.4-1.2,2.6-2.6H6.9V9H12.9z\"/><polygon points=\"20,9 20,11 18,11 18,13 16,13 16,11 14,11 14,9 16,9 16,7 18,7 18,9\"/></svg>",
         "google": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M17.86,9.09 C18.46,12.12 17.14,16.05 13.81,17.56 C9.45,19.53 4.13,17.68 2.47,12.87 C0.68,7.68 4.22,2.42 9.5,2.03 C11.57,1.88 13.42,2.37 15.05,3.65 C15.22,3.78 15.37,3.93 15.61,4.14 C14.9,4.81 14.23,5.45 13.5,6.14 C12.27,5.08 10.84,4.72 9.28,4.98 C8.12,5.17 7.16,5.76 6.37,6.63 C4.88,8.27 4.62,10.86 5.76,12.82 C6.95,14.87 9.17,15.8 11.57,15.25 C13.27,14.87 14.76,13.33 14.89,11.75 L10.51,11.75 L10.51,9.09 L17.86,9.09 L17.86,9.09 Z\"/></svg>",
         "grid": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"2\" y=\"2\" width=\"3\" height=\"3\"/><rect x=\"8\" y=\"2\" width=\"3\" height=\"3\"/><rect x=\"14\" y=\"2\" width=\"3\" height=\"3\"/><rect x=\"2\" y=\"8\" width=\"3\" height=\"3\"/><rect x=\"8\" y=\"8\" width=\"3\" height=\"3\"/><rect x=\"14\" y=\"8\" width=\"3\" height=\"3\"/><rect x=\"2\" y=\"14\" width=\"3\" height=\"3\"/><rect x=\"8\" y=\"14\" width=\"3\" height=\"3\"/><rect x=\"14\" y=\"14\" width=\"3\" height=\"3\"/></svg>",
         "happy": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"13\" cy=\"7\" r=\"1\"/><circle cx=\"7\" cy=\"7\" r=\"1\"/><circle fill=\"none\" stroke=\"#000\" cx=\"10\" cy=\"10\" r=\"8.5\"/><path fill=\"none\" stroke=\"#000\" d=\"M14.6,11.4 C13.9,13.3 12.1,14.5 10,14.5 C7.9,14.5 6.1,13.3 5.4,11.4\"/></svg>",
@@ -12377,6 +12477,7 @@ var uikitIcons = createCommonjsModule(function (module, exports) {
         "tablet": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path fill=\"none\" stroke=\"#000\" d=\"M5,18.5 C4.2,18.5 3.5,17.8 3.5,17 L3.5,3 C3.5,2.2 4.2,1.5 5,1.5 L16,1.5 C16.8,1.5 17.5,2.2 17.5,3 L17.5,17 C17.5,17.8 16.8,18.5 16,18.5 L5,18.5 L5,18.5 L5,18.5 Z\"/><circle cx=\"10.5\" cy=\"16.3\" r=\".8\"/></svg>",
         "tag": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path fill=\"none\" stroke=\"#000\" stroke-width=\"1.1\" d=\"M17.5,3.71 L17.5,7.72 C17.5,7.96 17.4,8.2 17.21,8.39 L8.39,17.2 C7.99,17.6 7.33,17.6 6.93,17.2 L2.8,13.07 C2.4,12.67 2.4,12.01 2.8,11.61 L11.61,2.8 C11.81,2.6 12.08,2.5 12.34,2.5 L16.19,2.5 C16.52,2.5 16.86,2.63 17.11,2.88 C17.35,3.11 17.48,3.4 17.5,3.71 L17.5,3.71 Z\"/><circle cx=\"14\" cy=\"6\" r=\"1\"/></svg>",
         "thumbnails": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"none\" stroke=\"#000\" x=\"3.5\" y=\"3.5\" width=\"5\" height=\"5\"/><rect fill=\"none\" stroke=\"#000\" x=\"11.5\" y=\"3.5\" width=\"5\" height=\"5\"/><rect fill=\"none\" stroke=\"#000\" x=\"11.5\" y=\"11.5\" width=\"5\" height=\"5\"/><rect fill=\"none\" stroke=\"#000\" x=\"3.5\" y=\"11.5\" width=\"5\" height=\"5\"/></svg>",
+        "tiktok": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M17.24,6V8.82a6.79,6.79,0,0,1-4-1.28v5.81A5.26,5.26,0,1,1,8,8.1a4.36,4.36,0,0,1,.72.05v2.9A2.57,2.57,0,0,0,7.64,11a2.4,2.4,0,1,0,2.77,2.38V2h2.86a4,4,0,0,0,1.84,3.38A4,4,0,0,0,17.24,6Z\"/></svg>",
         "trash": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><polyline fill=\"none\" stroke=\"#000\" points=\"6.5 3 6.5 1.5 13.5 1.5 13.5 3\"/><polyline fill=\"none\" stroke=\"#000\" points=\"4.5 4 4.5 18.5 15.5 18.5 15.5 4\"/><rect x=\"8\" y=\"7\" width=\"1\" height=\"9\"/><rect x=\"11\" y=\"7\" width=\"1\" height=\"9\"/><rect x=\"2\" y=\"3\" width=\"16\" height=\"1\"/></svg>",
         "triangle-down": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><polygon points=\"5 7 15 7 10 12\"/></svg>",
         "triangle-left": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><polygon points=\"12 5 7 10 12 15\"/></svg>",
@@ -12385,6 +12486,7 @@ var uikitIcons = createCommonjsModule(function (module, exports) {
         "tripadvisor": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M19.021,7.866C19.256,6.862,20,5.854,20,5.854h-3.346C14.781,4.641,12.504,4,9.98,4C7.363,4,4.999,4.651,3.135,5.876H0\tc0,0,0.738,0.987,0.976,1.988c-0.611,0.837-0.973,1.852-0.973,2.964c0,2.763,2.249,5.009,5.011,5.009\tc1.576,0,2.976-0.737,3.901-1.879l1.063,1.599l1.075-1.615c0.475,0.611,1.1,1.111,1.838,1.451c1.213,0.547,2.574,0.612,3.825,0.15\tc2.589-0.963,3.913-3.852,2.964-6.439c-0.175-0.463-0.4-0.876-0.675-1.238H19.021z M16.38,14.594\tc-1.002,0.371-2.088,0.328-3.06-0.119c-0.688-0.317-1.252-0.817-1.657-1.438c-0.164-0.25-0.313-0.52-0.417-0.811\tc-0.124-0.328-0.186-0.668-0.217-1.014c-0.063-0.689,0.037-1.396,0.339-2.043c0.448-0.971,1.251-1.71,2.25-2.079\tc2.075-0.765,4.375,0.3,5.14,2.366c0.762,2.066-0.301,4.37-2.363,5.134L16.38,14.594L16.38,14.594z M8.322,13.066\tc-0.72,1.059-1.935,1.76-3.309,1.76c-2.207,0-4.001-1.797-4.001-3.996c0-2.203,1.795-4.002,4.001-4.002\tc2.204,0,3.999,1.8,3.999,4.002c0,0.137-0.024,0.261-0.04,0.396c-0.067,0.678-0.284,1.313-0.648,1.853v-0.013H8.322z M2.472,10.775\tc0,1.367,1.112,2.479,2.476,2.479c1.363,0,2.472-1.11,2.472-2.479c0-1.359-1.11-2.468-2.472-2.468\tC3.584,8.306,2.473,9.416,2.472,10.775L2.472,10.775z M12.514,10.775c0,1.367,1.104,2.479,2.471,2.479\tc1.363,0,2.474-1.108,2.474-2.479c0-1.359-1.11-2.468-2.474-2.468c-1.364,0-2.477,1.109-2.477,2.468H12.514z M3.324,10.775\tc0-0.893,0.726-1.618,1.614-1.618c0.889,0,1.625,0.727,1.625,1.618c0,0.898-0.725,1.627-1.625,1.627\tc-0.901,0-1.625-0.729-1.625-1.627H3.324z M13.354,10.775c0-0.893,0.726-1.618,1.627-1.618c0.886,0,1.61,0.727,1.61,1.618\tc0,0.898-0.726,1.627-1.626,1.627s-1.625-0.729-1.625-1.627H13.354z M9.977,4.875c1.798,0,3.425,0.324,4.849,0.968\tc-0.535,0.015-1.061,0.108-1.586,0.3c-1.264,0.463-2.264,1.388-2.815,2.604c-0.262,0.551-0.398,1.133-0.448,1.72\tC9.79,7.905,7.677,5.873,5.076,5.82C6.501,5.208,8.153,4.875,9.94,4.875H9.977z\"/></svg>",
         "tumblr": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M6.885,8.598c0,0,0,3.393,0,4.996c0,0.282,0,0.66,0.094,0.942c0.377,1.509,1.131,2.545,2.545,3.11 c1.319,0.472,2.356,0.472,3.676,0c0.565-0.188,1.132-0.659,1.132-0.659l-0.849-2.263c0,0-1.036,0.378-1.603,0.283 c-0.565-0.094-1.226-0.66-1.226-1.508c0-1.603,0-4.902,0-4.902h2.828V5.771h-2.828V2H8.205c0,0-0.094,0.66-0.188,0.942 C7.828,3.791,7.262,4.733,6.603,5.394C5.848,6.147,5,6.43,5,6.43v2.168H6.885z\"/></svg>",
         "tv": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"7\" y=\"16\" width=\"6\" height=\"1\"/><rect fill=\"none\" stroke=\"#000\" x=\".5\" y=\"3.5\" width=\"19\" height=\"11\"/></svg>",
+        "twitch": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M5.23,1,2,4.23V15.85H5.88v3.23L9.1,15.85h2.59L17.5,10V1Zm11,8.4L13.62,12H11L8.78,14.24V12H5.88V2.29H16.21Z\"/><rect x=\"12.98\" y=\"4.55\" width=\"1.29\" height=\"3.88\"/><rect x=\"9.43\" y=\"4.55\" width=\"1.29\" height=\"3.88\"/></svg>",
         "twitter": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M19,4.74 C18.339,5.029 17.626,5.229 16.881,5.32 C17.644,4.86 18.227,4.139 18.503,3.28 C17.79,3.7 17.001,4.009 16.159,4.17 C15.485,3.45 14.526,3 13.464,3 C11.423,3 9.771,4.66 9.771,6.7 C9.771,6.99 9.804,7.269 9.868,7.539 C6.795,7.38 4.076,5.919 2.254,3.679 C1.936,4.219 1.754,4.86 1.754,5.539 C1.754,6.82 2.405,7.95 3.397,8.61 C2.79,8.589 2.22,8.429 1.723,8.149 L1.723,8.189 C1.723,9.978 2.997,11.478 4.686,11.82 C4.376,11.899 4.049,11.939 3.713,11.939 C3.475,11.939 3.245,11.919 3.018,11.88 C3.49,13.349 4.852,14.419 6.469,14.449 C5.205,15.429 3.612,16.019 1.882,16.019 C1.583,16.019 1.29,16.009 1,15.969 C2.635,17.019 4.576,17.629 6.662,17.629 C13.454,17.629 17.17,12 17.17,7.129 C17.17,6.969 17.166,6.809 17.157,6.649 C17.879,6.129 18.504,5.478 19,4.74\"/></svg>",
         "uikit": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><polygon points=\"14.4,3.1 11.3,5.1 15,7.3 15,12.9 10,15.7 5,12.9 5,8.5 2,6.8 2,14.8 9.9,19.5 18,14.8 18,5.3\"/><polygon points=\"9.8,4.2 6.7,2.4 9.8,0.4 12.9,2.3\"/></svg>",
         "unlock": "<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"none\" stroke=\"#000\" x=\"3.5\" y=\"8.5\" width=\"13\" height=\"10\"/><path fill=\"none\" stroke=\"#000\" d=\"M6.5,8.5 L6.5,4.9 C6.5,3 8.1,1.5 10,1.5 C11.9,1.5 13.5,3 13.5,4.9\"/></svg>",
@@ -12440,20 +12542,20 @@ function styleInject(css, ref) {
   }
 }
 
-function _typeof(obj) {
+function _typeof$1(obj) {
   "@babel/helpers - typeof";
 
   if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
-    _typeof = function (obj) {
+    _typeof$1 = function (obj) {
       return typeof obj;
     };
   } else {
-    _typeof = function (obj) {
+    _typeof$1 = function (obj) {
       return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
     };
   }
 
-  return _typeof(obj);
+  return _typeof$1(obj);
 }
 
 function _classCallCheck(instance, Constructor) {
@@ -12462,7 +12564,7 @@ function _classCallCheck(instance, Constructor) {
   }
 }
 
-function _defineProperties(target, props) {
+function _defineProperties$1(target, props) {
   for (var i = 0; i < props.length; i++) {
     var descriptor = props[i];
     descriptor.enumerable = descriptor.enumerable || false;
@@ -12472,13 +12574,13 @@ function _defineProperties(target, props) {
   }
 }
 
-function _createClass(Constructor, protoProps, staticProps) {
-  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-  if (staticProps) _defineProperties(Constructor, staticProps);
+function _createClass$1(Constructor, protoProps, staticProps) {
+  if (protoProps) _defineProperties$1(Constructor.prototype, protoProps);
+  if (staticProps) _defineProperties$1(Constructor, staticProps);
   return Constructor;
 }
 
-function _defineProperty(obj, key, value) {
+function _defineProperty$1(obj, key, value) {
   if (key in obj) {
     Object.defineProperty(obj, key, {
       value: value,
@@ -12493,8 +12595,8 @@ function _defineProperty(obj, key, value) {
   return obj;
 }
 
-function _extends() {
-  _extends = Object.assign || function (target) {
+function _extends$2() {
+  _extends$2 = Object.assign || function (target) {
     for (var i = 1; i < arguments.length; i++) {
       var source = arguments[i];
 
@@ -12508,7 +12610,7 @@ function _extends() {
     return target;
   };
 
-  return _extends.apply(this, arguments);
+  return _extends$2.apply(this, arguments);
 }
 
 function ownKeys(object, enumerableOnly) {
@@ -12531,7 +12633,7 @@ function _objectSpread2(target) {
 
     if (i % 2) {
       ownKeys(Object(source), true).forEach(function (key) {
-        _defineProperty(target, key, source[key]);
+        _defineProperty$1(target, key, source[key]);
       });
     } else if (Object.getOwnPropertyDescriptors) {
       Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
@@ -12557,7 +12659,7 @@ function _inherits(subClass, superClass) {
       configurable: true
     }
   });
-  if (superClass) _setPrototypeOf(subClass, superClass);
+  if (superClass) _setPrototypeOf$1(subClass, superClass);
 }
 
 function _getPrototypeOf(o) {
@@ -12567,13 +12669,13 @@ function _getPrototypeOf(o) {
   return _getPrototypeOf(o);
 }
 
-function _setPrototypeOf(o, p) {
-  _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+function _setPrototypeOf$1(o, p) {
+  _setPrototypeOf$1 = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
     o.__proto__ = p;
     return o;
   };
 
-  return _setPrototypeOf(o, p);
+  return _setPrototypeOf$1(o, p);
 }
 
 function _isNativeReflectConstruct() {
@@ -12582,14 +12684,14 @@ function _isNativeReflectConstruct() {
   if (typeof Proxy === "function") return true;
 
   try {
-    Date.prototype.toString.call(Reflect.construct(Date, [], function () {}));
+    Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
     return true;
   } catch (e) {
     return false;
   }
 }
 
-function _objectWithoutPropertiesLoose(source, excluded) {
+function _objectWithoutPropertiesLoose$1(source, excluded) {
   if (source == null) return {};
   var target = {};
   var sourceKeys = Object.keys(source);
@@ -12607,7 +12709,7 @@ function _objectWithoutPropertiesLoose(source, excluded) {
 function _objectWithoutProperties(source, excluded) {
   if (source == null) return {};
 
-  var target = _objectWithoutPropertiesLoose(source, excluded);
+  var target = _objectWithoutPropertiesLoose$1(source, excluded);
 
   var key, i;
 
@@ -12625,7 +12727,7 @@ function _objectWithoutProperties(source, excluded) {
   return target;
 }
 
-function _assertThisInitialized(self) {
+function _assertThisInitialized$2(self) {
   if (self === void 0) {
     throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
   }
@@ -12638,7 +12740,7 @@ function _possibleConstructorReturn(self, call) {
     return call;
   }
 
-  return _assertThisInitialized(self);
+  return _assertThisInitialized$2(self);
 }
 
 function _createSuper(Derived) {
@@ -12660,59 +12762,28 @@ function _createSuper(Derived) {
   };
 }
 
-function _slicedToArray(arr, i) {
-  return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
-}
-
 function _toArray(arr) {
-  return _arrayWithHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableRest();
+  return _arrayWithHoles(arr) || _iterableToArray$1(arr) || _unsupportedIterableToArray$1(arr) || _nonIterableRest();
 }
 
 function _arrayWithHoles(arr) {
   if (Array.isArray(arr)) return arr;
 }
 
-function _iterableToArray(iter) {
+function _iterableToArray$1(iter) {
   if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter);
 }
 
-function _iterableToArrayLimit(arr, i) {
-  if (typeof Symbol === "undefined" || !(Symbol.iterator in Object(arr))) return;
-  var _arr = [];
-  var _n = true;
-  var _d = false;
-  var _e = undefined;
-
-  try {
-    for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
-      _arr.push(_s.value);
-
-      if (i && _arr.length === i) break;
-    }
-  } catch (err) {
-    _d = true;
-    _e = err;
-  } finally {
-    try {
-      if (!_n && _i["return"] != null) _i["return"]();
-    } finally {
-      if (_d) throw _e;
-    }
-  }
-
-  return _arr;
-}
-
-function _unsupportedIterableToArray(o, minLen) {
+function _unsupportedIterableToArray$1(o, minLen) {
   if (!o) return;
-  if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+  if (typeof o === "string") return _arrayLikeToArray$1(o, minLen);
   var n = Object.prototype.toString.call(o).slice(8, -1);
   if (n === "Object" && o.constructor) n = o.constructor.name;
   if (n === "Map" || n === "Set") return Array.from(o);
-  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen);
 }
 
-function _arrayLikeToArray(arr, len) {
+function _arrayLikeToArray$1(arr, len) {
   if (len == null || len > arr.length) len = arr.length;
 
   for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
@@ -12765,7 +12836,7 @@ var classnames = createCommonjsModule(function (module) {
 		return classes.join(' ');
 	}
 
-	if ( module.exports) {
+	if (module.exports) {
 		classNames.default = classNames;
 		module.exports = classNames;
 	} else {
@@ -13017,7 +13088,7 @@ object-assign
 @license MIT
 */
 /* eslint-disable no-unused-vars */
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+var getOwnPropertySymbols$1 = Object.getOwnPropertySymbols;
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 var propIsEnumerable = Object.prototype.propertyIsEnumerable;
 
@@ -13087,8 +13158,8 @@ var objectAssign = shouldUseNative() ? Object.assign : function (target, source)
 			}
 		}
 
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
+		if (getOwnPropertySymbols$1) {
+			symbols = getOwnPropertySymbols$1(from);
 			for (var i = 0; i < symbols.length; i++) {
 				if (propIsEnumerable.call(from, symbols[i])) {
 					to[symbols[i]] = from[symbols[i]];
@@ -13107,9 +13178,9 @@ var objectAssign = shouldUseNative() ? Object.assign : function (target, source)
  * LICENSE file in the root directory of this source tree.
  */
 
-var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
+var ReactPropTypesSecret$1 = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
-var ReactPropTypesSecret_1 = ReactPropTypesSecret;
+var ReactPropTypesSecret_1 = ReactPropTypesSecret$1;
 
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -13118,14 +13189,14 @@ var ReactPropTypesSecret_1 = ReactPropTypesSecret;
  * LICENSE file in the root directory of this source tree.
  */
 
-var printWarning = function() {};
+var printWarning$1 = function() {};
 
 if (process.env.NODE_ENV !== 'production') {
-  var ReactPropTypesSecret$1 = ReactPropTypesSecret_1;
+  var ReactPropTypesSecret = ReactPropTypesSecret_1;
   var loggedTypeFailures = {};
-  var has = Function.call.bind(Object.prototype.hasOwnProperty);
+  var has$1 = Function.call.bind(Object.prototype.hasOwnProperty);
 
-  printWarning = function(text) {
+  printWarning$1 = function(text) {
     var message = 'Warning: ' + text;
     if (typeof console !== 'undefined') {
       console.error(message);
@@ -13153,7 +13224,7 @@ if (process.env.NODE_ENV !== 'production') {
 function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
   if (process.env.NODE_ENV !== 'production') {
     for (var typeSpecName in typeSpecs) {
-      if (has(typeSpecs, typeSpecName)) {
+      if (has$1(typeSpecs, typeSpecName)) {
         var error;
         // Prop type validation may throw. In case they do, we don't want to
         // fail the render phase where it didn't fail before. So we log it.
@@ -13169,12 +13240,12 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
             err.name = 'Invariant Violation';
             throw err;
           }
-          error = typeSpecs[typeSpecName](values, typeSpecName, componentName, location, null, ReactPropTypesSecret$1);
+          error = typeSpecs[typeSpecName](values, typeSpecName, componentName, location, null, ReactPropTypesSecret);
         } catch (ex) {
           error = ex;
         }
         if (error && !(error instanceof Error)) {
-          printWarning(
+          printWarning$1(
             (componentName || 'React class') + ': type specification of ' +
             location + ' `' + typeSpecName + '` is invalid; the type checker ' +
             'function must return `null` or an `Error` but returned a ' + typeof error + '. ' +
@@ -13190,7 +13261,7 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
 
           var stack = getStack ? getStack() : '';
 
-          printWarning(
+          printWarning$1(
             'Failed ' + location + ' type: ' + error.message + (stack != null ? stack : '')
           );
         }
@@ -13225,11 +13296,11 @@ var checkPropTypes_1 = checkPropTypes;
 
 
 
-var has$1 = Function.call.bind(Object.prototype.hasOwnProperty);
-var printWarning$1 = function() {};
+var has = Function.call.bind(Object.prototype.hasOwnProperty);
+var printWarning = function() {};
 
 if (process.env.NODE_ENV !== 'production') {
-  printWarning$1 = function(text) {
+  printWarning = function(text) {
     var message = 'Warning: ' + text;
     if (typeof console !== 'undefined') {
       console.error(message);
@@ -13405,7 +13476,7 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
             // Avoid spamming the console because they are often not actionable except for lib authors
             manualPropTypeWarningCount < 3
           ) {
-            printWarning$1(
+            printWarning(
               'You are manually calling a React.PropTypes validation ' +
               'function for the `' + propFullName + '` prop on `' + componentName  + '`. This is deprecated ' +
               'and will throw in the standalone `prop-types` package. ' +
@@ -13518,12 +13589,12 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
     if (!Array.isArray(expectedValues)) {
       if (process.env.NODE_ENV !== 'production') {
         if (arguments.length > 1) {
-          printWarning$1(
+          printWarning(
             'Invalid arguments supplied to oneOf, expected an array, got ' + arguments.length + ' arguments. ' +
             'A common mistake is to write oneOf(x, y, z) instead of oneOf([x, y, z]).'
           );
         } else {
-          printWarning$1('Invalid argument supplied to oneOf, expected an array.');
+          printWarning('Invalid argument supplied to oneOf, expected an array.');
         }
       }
       return emptyFunctionThatReturnsNull;
@@ -13560,7 +13631,7 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
         return new PropTypeError('Invalid ' + location + ' `' + propFullName + '` of type ' + ('`' + propType + '` supplied to `' + componentName + '`, expected an object.'));
       }
       for (var key in propValue) {
-        if (has$1(propValue, key)) {
+        if (has(propValue, key)) {
           var error = typeChecker(propValue, key, componentName, location, propFullName + '.' + key, ReactPropTypesSecret_1);
           if (error instanceof Error) {
             return error;
@@ -13574,14 +13645,14 @@ var factoryWithTypeCheckers = function(isValidElement, throwOnDirectAccess) {
 
   function createUnionTypeChecker(arrayOfTypeCheckers) {
     if (!Array.isArray(arrayOfTypeCheckers)) {
-      process.env.NODE_ENV !== 'production' ? printWarning$1('Invalid argument supplied to oneOfType, expected an instance of array.') : void 0;
+      process.env.NODE_ENV !== 'production' ? printWarning('Invalid argument supplied to oneOfType, expected an instance of array.') : void 0;
       return emptyFunctionThatReturnsNull;
     }
 
     for (var i = 0; i < arrayOfTypeCheckers.length; i++) {
       var checker = arrayOfTypeCheckers[i];
       if (typeof checker !== 'function') {
-        printWarning$1(
+        printWarning(
           'Invalid argument supplied to oneOfType. Expected an array of check functions, but ' +
           'received ' + getPostfixForTypeWarning(checker) + ' at index ' + i + '.'
         );
@@ -14251,7 +14322,7 @@ var requestFlush;
 // The position of the next task to execute in the task queue. This is
 // preserved between calls to `flush` so that it can be resumed if
 // a task throws an exception.
-var index = 0;
+var index$2 = 0;
 // If a task schedules additional tasks recursively, the task queue can grow
 // unbounded. To prevent memory exhaustion, the task queue will periodically
 // truncate already-completed tasks.
@@ -14264,29 +14335,29 @@ var capacity = 1024;
 // However, `flush` does not make any arrangements to be called again if an
 // exception is thrown.
 function flush() {
-    while (index < queue.length) {
-        var currentIndex = index;
+    while (index$2 < queue.length) {
+        var currentIndex = index$2;
         // Advance the index before calling the task. This ensures that we will
         // begin flushing on the next task the task throws an error.
-        index = index + 1;
+        index$2 = index$2 + 1;
         queue[currentIndex].call();
         // Prevent leaking memory for long chains of recursive calls to `asap`.
         // If we call `asap` within tasks scheduled by `asap`, the queue will
         // grow, but to avoid an O(n) walk for every task we execute, we don't
         // shift tasks off the queue after they have been executed.
         // Instead, we periodically shift 1024 tasks off the queue.
-        if (index > capacity) {
+        if (index$2 > capacity) {
             // Manually shift all values starting at the index back to the
             // beginning of the queue.
-            for (var scan = 0, newLength = queue.length - index; scan < newLength; scan++) {
-                queue[scan] = queue[scan + index];
+            for (var scan = 0, newLength = queue.length - index$2; scan < newLength; scan++) {
+                queue[scan] = queue[scan + index$2];
             }
-            queue.length -= index;
-            index = 0;
+            queue.length -= index$2;
+            index$2 = 0;
         }
     }
     queue.length = 0;
-    index = 0;
+    index$2 = 0;
 }
 
 // `requestFlush` is implemented using a strategy based on data collected from
@@ -14299,7 +14370,7 @@ function flush() {
 // workers. `global` is a provision of Browserify, Mr, Mrs, or Mop.
 
 /* globals self */
-var scope = typeof commonjsGlobal !== "undefined" ? commonjsGlobal : self;
+var scope = typeof commonjsGlobal$1 !== "undefined" ? commonjsGlobal$1 : self;
 var BrowserMutationObserver = scope.MutationObserver || scope.WebKitMutationObserver;
 
 // MutationObservers are desirable because they have high priority and work
@@ -16737,10 +16808,10 @@ exports.makeExports = makeExports;
 var useImportant = false; // Don't add !important to style definitions
 
 var Aphrodite = chunkD8625444.makeExports(useImportant);
-var StyleSheet = Aphrodite.StyleSheet,
+var StyleSheet$1 = Aphrodite.StyleSheet,
     StyleSheetServer = Aphrodite.StyleSheetServer,
     StyleSheetTestUtils = Aphrodite.StyleSheetTestUtils,
-    css = Aphrodite.css,
+    css$1 = Aphrodite.css,
     minify = Aphrodite.minify,
     flushToStyleTag = Aphrodite.flushToStyleTag,
     injectAndGetClassName = Aphrodite.injectAndGetClassName,
@@ -16748,10 +16819,10 @@ var StyleSheet = Aphrodite.StyleSheet,
     reset = Aphrodite.reset,
     resetInjectedStyle = Aphrodite.resetInjectedStyle;
 
-var StyleSheet_1 = StyleSheet;
+var StyleSheet_1 = StyleSheet$1;
 var StyleSheetServer_1 = StyleSheetServer;
 var StyleSheetTestUtils_1 = StyleSheetTestUtils;
-var css_1 = css;
+var css_1 = css$1;
 var minify_1 = minify;
 var flushToStyleTag_1 = flushToStyleTag;
 var injectAndGetClassName_1 = injectAndGetClassName;
@@ -16759,7 +16830,7 @@ var defaultSelectorHandlers_1 = defaultSelectorHandlers;
 var reset_1 = reset;
 var resetInjectedStyle_1 = resetInjectedStyle;
 
-var noImportant = /*#__PURE__*/Object.defineProperty({
+var noImportant$1 = /*#__PURE__*/Object.defineProperty({
 	StyleSheet: StyleSheet_1,
 	StyleSheetServer: StyleSheetServer_1,
 	StyleSheetTestUtils: StyleSheetTestUtils_1,
@@ -16772,9 +16843,9 @@ var noImportant = /*#__PURE__*/Object.defineProperty({
 	resetInjectedStyle: resetInjectedStyle_1
 }, '__esModule', {value: true});
 
-var noImportant$1 = noImportant;
+var noImportant = noImportant$1;
 
-var iconStyle = noImportant$1.StyleSheet.create({
+noImportant.StyleSheet.create({
   root: {
     margin: 0,
     border: 'none',
@@ -16867,13 +16938,22 @@ function _extends$1() {
   return _extends$1.apply(this, arguments);
 }
 
-function _inheritsLoose(subClass, superClass) {
-  subClass.prototype = Object.create(superClass.prototype);
-  subClass.prototype.constructor = subClass;
-  subClass.__proto__ = superClass;
+function _setPrototypeOf(o, p) {
+  _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
+    o.__proto__ = p;
+    return o;
+  };
+
+  return _setPrototypeOf(o, p);
 }
 
-function _objectWithoutPropertiesLoose$1(source, excluded) {
+function _inheritsLoose$1(subClass, superClass) {
+  subClass.prototype = Object.create(superClass.prototype);
+  subClass.prototype.constructor = subClass;
+  _setPrototypeOf(subClass, superClass);
+}
+
+function _objectWithoutPropertiesLoose(source, excluded) {
   if (source == null) return {};
   var target = {};
   var sourceKeys = Object.keys(source);
@@ -16945,7 +17025,7 @@ function getStatics(component) {
 
 var defineProperty = Object.defineProperty;
 var getOwnPropertyNames = Object.getOwnPropertyNames;
-var getOwnPropertySymbols$1 = Object.getOwnPropertySymbols;
+var getOwnPropertySymbols = Object.getOwnPropertySymbols;
 var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 var getPrototypeOf = Object.getPrototypeOf;
 var objectPrototype = Object.prototype;
@@ -16962,8 +17042,8 @@ function hoistNonReactStatics(targetComponent, sourceComponent, blacklist) {
 
     var keys = getOwnPropertyNames(sourceComponent);
 
-    if (getOwnPropertySymbols$1) {
-      keys = keys.concat(getOwnPropertySymbols$1(sourceComponent));
+    if (getOwnPropertySymbols) {
+      keys = keys.concat(getOwnPropertySymbols(sourceComponent));
     }
 
     var targetStatics = getStatics(targetComponent);
@@ -16988,9 +17068,9 @@ function hoistNonReactStatics(targetComponent, sourceComponent, blacklist) {
 
 var hoistNonReactStatics_cjs = hoistNonReactStatics;
 
-var isProduction = process.env.NODE_ENV === 'production';
+var isProduction$1 = process.env.NODE_ENV === 'production';
 function warning(condition, message) {
-  if (!isProduction) {
+  if (!isProduction$1) {
     if (condition) {
       return;
     }
@@ -17007,12 +17087,12 @@ function warning(condition, message) {
   }
 }
 
-var _default = getDisplayName;
-function getDisplayName(Component) {
+var _default = getDisplayName$1;
+function getDisplayName$1(Component) {
   return Component.displayName || Component.name || (typeof Component === 'string' && Component.length > 0 ? Component : 'Unknown');
 }
 
-function _defineProperty$1(obj, key, value) {
+function _defineProperty(obj, key, value) {
   if (key in obj) {
     Object.defineProperty(obj, key, {
       value: value,
@@ -17027,8 +17107,8 @@ function _defineProperty$1(obj, key, value) {
   return obj;
 }
 
-function _extends$2() {
-  _extends$2 = Object.assign || function (target) {
+function _extends() {
+  _extends = Object.assign || function (target) {
     for (var i = 1; i < arguments.length; i++) {
       var source = arguments[i];
 
@@ -17042,10 +17122,10 @@ function _extends$2() {
     return target;
   };
 
-  return _extends$2.apply(this, arguments);
+  return _extends.apply(this, arguments);
 }
 
-function _inheritsLoose$1(subClass, superClass) {
+function _inheritsLoose(subClass, superClass) {
   subClass.prototype = Object.create(superClass.prototype);
   subClass.prototype.constructor = subClass;
   subClass.__proto__ = superClass;
@@ -17059,7 +17139,7 @@ function _assertThisInitialized$1(self) {
   return self;
 }
 
-function isObject(obj) {
+function isObject$1(obj) {
   return obj !== null && typeof obj === 'object' && !Array.isArray(obj);
 }
 
@@ -17067,7 +17147,7 @@ function createThemeProvider(context) {
   var ThemeProvider =
   /*#__PURE__*/
   function (_React$Component) {
-    _inheritsLoose$1(ThemeProvider, _React$Component);
+    _inheritsLoose(ThemeProvider, _React$Component);
 
     function ThemeProvider() {
       var _this;
@@ -17078,13 +17158,13 @@ function createThemeProvider(context) {
 
       _this = _React$Component.call.apply(_React$Component, [this].concat(args)) || this;
 
-      _defineProperty$1(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "cachedTheme", void 0);
+      _defineProperty(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "cachedTheme", void 0);
 
-      _defineProperty$1(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "lastOuterTheme", void 0);
+      _defineProperty(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "lastOuterTheme", void 0);
 
-      _defineProperty$1(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "lastTheme", void 0);
+      _defineProperty(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "lastTheme", void 0);
 
-      _defineProperty$1(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "renderProvider", function (outerTheme) {
+      _defineProperty(_assertThisInitialized$1(_assertThisInitialized$1(_this)), "renderProvider", function (outerTheme) {
         var children = _this.props.children;
         return React.createElement(context.Provider, {
           value: _this.getTheme(outerTheme)
@@ -17105,11 +17185,11 @@ function createThemeProvider(context) {
         if (typeof this.lastTheme === 'function') {
           var theme = this.props.theme;
           this.cachedTheme = theme(outerTheme);
-          process.env.NODE_ENV !== "production" ? warning(isObject(this.cachedTheme), '[ThemeProvider] Please return an object from your theme function') : void 0;
+          process.env.NODE_ENV !== "production" ? warning(isObject$1(this.cachedTheme), '[ThemeProvider] Please return an object from your theme function') : void 0;
         } else {
           var _theme = this.props.theme;
-          process.env.NODE_ENV !== "production" ? warning(isObject(_theme), '[ThemeProvider] Please make your theme prop a plain object') : void 0;
-          this.cachedTheme = outerTheme ? _extends$2({}, outerTheme, _theme) : _theme;
+          process.env.NODE_ENV !== "production" ? warning(isObject$1(_theme), '[ThemeProvider] Please make your theme prop a plain object') : void 0;
+          this.cachedTheme = outerTheme ? _extends({}, outerTheme, _theme) : _theme;
         }
       }
 
@@ -17144,8 +17224,8 @@ function createWithTheme(context) {
   return function hoc(Component) {
     var withTheme = React.forwardRef(function (props, ref) {
       return React.createElement(context.Consumer, null, function (theme) {
-        process.env.NODE_ENV !== "production" ? warning(isObject(theme), '[theming] Please use withTheme only with the ThemeProvider') : void 0;
-        return React.createElement(Component, _extends$2({
+        process.env.NODE_ENV !== "production" ? warning(isObject$1(theme), '[theming] Please use withTheme only with the ThemeProvider') : void 0;
+        return React.createElement(Component, _extends({
           theme: theme,
           ref: ref
         }, props));
@@ -17164,7 +17244,7 @@ function createWithTheme(context) {
 function createUseTheme(context) {
   var useTheme = function useTheme() {
     var theme = React.useContext(context);
-    process.env.NODE_ENV !== "production" ? warning(isObject(theme), '[theming] Please use useTheme only with the ThemeProvider') : void 0;
+    process.env.NODE_ENV !== "production" ? warning(isObject$1(theme), '[theming] Please use useTheme only with the ThemeProvider') : void 0;
     return theme;
   };
 
@@ -17185,11 +17265,11 @@ var ThemeContext = createContext();
 var _createTheming = createTheming(ThemeContext),
     withTheme = _createTheming.withTheme;
 
-var _typeof$1 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var isBrowser = (typeof window === "undefined" ? "undefined" : _typeof$1(window)) === "object" && (typeof document === "undefined" ? "undefined" : _typeof$1(document)) === 'object' && document.nodeType === 9;
+var isBrowser = (typeof window === "undefined" ? "undefined" : _typeof(window)) === "object" && (typeof document === "undefined" ? "undefined" : _typeof(document)) === 'object' && document.nodeType === 9;
 
-function _defineProperties$1(target, props) {
+function _defineProperties(target, props) {
   for (var i = 0; i < props.length; i++) {
     var descriptor = props[i];
     descriptor.enumerable = descriptor.enumerable || false;
@@ -17199,13 +17279,13 @@ function _defineProperties$1(target, props) {
   }
 }
 
-function _createClass$1(Constructor, protoProps, staticProps) {
-  if (protoProps) _defineProperties$1(Constructor.prototype, protoProps);
-  if (staticProps) _defineProperties$1(Constructor, staticProps);
+function _createClass(Constructor, protoProps, staticProps) {
+  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+  if (staticProps) _defineProperties(Constructor, staticProps);
   return Constructor;
 }
 
-function _assertThisInitialized$2(self) {
+function _assertThisInitialized(self) {
   if (self === void 0) {
     throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
   }
@@ -17440,7 +17520,7 @@ function () {
 var StyleRule =
 /*#__PURE__*/
 function (_BaseStyleRule) {
-  _inheritsLoose(StyleRule, _BaseStyleRule);
+  _inheritsLoose$1(StyleRule, _BaseStyleRule);
 
   function StyleRule(key, style, options) {
     var _this;
@@ -17457,7 +17537,7 @@ function (_BaseStyleRule) {
     if (selector) {
       _this.selectorText = selector;
     } else if (scoped !== false) {
-      _this.id = generateId(_assertThisInitialized$2(_assertThisInitialized$2(_this)), sheet);
+      _this.id = generateId(_assertThisInitialized(_assertThisInitialized(_this)), sheet);
       _this.selectorText = "." + escape(_this.id);
     }
 
@@ -17519,7 +17599,7 @@ function (_BaseStyleRule) {
     return toCss(this.selectorText, this.style, opts);
   };
 
-  _createClass$1(StyleRule, [{
+  _createClass(StyleRule, [{
     key: "selector",
     set: function set(selector) {
       if (selector === this.selectorText) return;
@@ -17726,11 +17806,11 @@ function () {
   return KeyframesRule;
 }();
 var keyRegExp$1 = /@keyframes\s+/;
-var refRegExp = /\$([\w-]+)/g;
+var refRegExp$1 = /\$([\w-]+)/g;
 
 var findReferencedKeyframe = function findReferencedKeyframe(val, keyframes) {
   if (typeof val === 'string') {
-    return val.replace(refRegExp, function (match, name) {
+    return val.replace(refRegExp$1, function (match, name) {
       if (name in keyframes) {
         return keyframes[name];
       }
@@ -17790,7 +17870,7 @@ var plugin = {
 var KeyframeRule =
 /*#__PURE__*/
 function (_BaseStyleRule) {
-  _inheritsLoose(KeyframeRule, _BaseStyleRule);
+  _inheritsLoose$1(KeyframeRule, _BaseStyleRule);
 
   function KeyframeRule() {
     var _this;
@@ -17960,7 +18040,7 @@ var pluginSimpleRule = {
   }
 };
 
-var plugins = [pluginStyleRule, pluginConditionalRule, plugin, pluginKeyframeRule, pluginFontFaceRule, pluginViewportRule, pluginSimpleRule];
+var plugins$1 = [pluginStyleRule, pluginConditionalRule, plugin, pluginKeyframeRule, pluginFontFaceRule, pluginViewportRule, pluginSimpleRule];
 
 var defaultUpdateOptions = {
   process: true
@@ -18222,7 +18302,7 @@ function () {
   return RuleList;
 }();
 
-var StyleSheet$1 =
+var StyleSheet =
 /*#__PURE__*/
 function () {
   function StyleSheet(styles, options) {
@@ -18612,7 +18692,7 @@ function () {
   _proto.toString = function toString(_temp) {
     var _ref = _temp === void 0 ? {} : _temp,
         attached = _ref.attached,
-        options = _objectWithoutPropertiesLoose$1(_ref, ["attached"]);
+        options = _objectWithoutPropertiesLoose(_ref, ["attached"]);
 
     var css = '';
 
@@ -18630,7 +18710,7 @@ function () {
     return css;
   };
 
-  _createClass$1(SheetsRegistry, [{
+  _createClass(SheetsRegistry, [{
     key: "index",
 
     /**
@@ -18710,7 +18790,7 @@ var createGenerateId = function createGenerateId(options) {
 /**
  * Cache the value from the first time a function is called.
  */
-var memoize = function memoize(fn) {
+var memoize$1 = function memoize(fn) {
   var value;
   return function () {
     if (!value) value = fn();
@@ -18796,7 +18876,7 @@ var setSelector = function setSelector(cssRule, selectorText) {
  */
 
 
-var getHead = memoize(function () {
+var getHead = memoize$1(function () {
   return document.querySelector('head');
 });
 /**
@@ -18927,7 +19007,7 @@ function insertStyle(style, options) {
  */
 
 
-var getNonce = memoize(function () {
+var getNonce = memoize$1(function () {
   var node = document.querySelector('meta[property="csp-nonce"]');
   return node ? node.getAttribute('content') : null;
 });
@@ -19116,7 +19196,7 @@ function () {
     rule.renderable = cssRule; // We only want to reference the top level rules, deleteRule API doesn't support removing nested rules
     // like rules inside media queries or keyframes
 
-    if (rule.options.parent instanceof StyleSheet$1) {
+    if (rule.options.parent instanceof StyleSheet) {
       this.cssRules[index] = cssRule;
     }
   }
@@ -19174,7 +19254,7 @@ var Jss =
 function () {
   function Jss(options) {
     this.id = instanceCounter++;
-    this.version = "10.5.0";
+    this.version = "10.5.1";
     this.plugins = new PluginsRegistry();
     this.options = {
       id: {
@@ -19188,8 +19268,8 @@ function () {
       minify: false
     });
 
-    for (var i = 0; i < plugins.length; i++) {
-      this.plugins.use(plugins[i], {
+    for (var i = 0; i < plugins$1.length; i++) {
+      this.plugins.use(plugins$1[i], {
         queue: 'internal'
       });
     }
@@ -19249,7 +19329,7 @@ function () {
       index = registry.index === 0 ? 0 : registry.index + 1;
     }
 
-    var sheet = new StyleSheet$1(styles, _extends$1({}, options, {
+    var sheet = new StyleSheet(styles, _extends$1({}, options, {
       jss: this,
       generateId: options.generateId || this.generateId,
       insertionPoint: this.options.insertionPoint,
@@ -19410,7 +19490,7 @@ function () {
     }
   };
 
-  _createClass$1(SheetsManager, [{
+  _createClass(SheetsManager, [{
     key: "size",
     get: function get() {
       return this.length;
@@ -19437,14 +19517,14 @@ var hasCSSTOMSupport = typeof CSS === 'object' && CSS != null && 'number' in CSS
  * Creates a new instance of Jss.
  */
 
-var create = function create(options) {
+var create$1 = function create(options) {
   return new Jss(options);
 };
 /**
  * A global Jss instance.
  */
 
-var jss = create();
+var jss$1 = create$1();
 
 var now = Date.now();
 var fnValuesNs = "fnValues" + now;
@@ -19600,7 +19680,7 @@ var semiWithNl = /;\n/;
  * - Requires semicolon and new line after the value (except of last line)
  * - No nested rules support
  */
-var parse = function parse(cssText) {
+var parse$1 = function parse(cssText) {
   var style = {};
   var split = cssText.split(semiWithNl);
 
@@ -19625,7 +19705,7 @@ var parse = function parse(cssText) {
 var onProcessRule = function onProcessRule(rule) {
   if (typeof rule.style === 'string') {
     // $FlowFixMe[prop-missing] We can safely assume that rule has the style property
-    rule.style = parse(rule.style);
+    rule.style = parse$1(rule.style);
   }
 };
 
@@ -19727,10 +19807,10 @@ function () {
   return GlobalPrefixedRule;
 }();
 
-var separatorRegExp = /\s*,\s*/g;
+var separatorRegExp$1 = /\s*,\s*/g;
 
 function addScope(selector, scope) {
-  var parts = selector.split(separatorRegExp);
+  var parts = selector.split(separatorRegExp$1);
   var scoped = '';
 
   for (var i = 0; i < parts.length; i++) {
@@ -19816,7 +19896,7 @@ function jssGlobal() {
   };
 }
 
-var isObject$1 = function isObject(obj) {
+var isObject = function isObject(obj) {
   return obj && typeof obj === 'object' && !Array.isArray(obj);
 };
 
@@ -19865,7 +19945,7 @@ function mergeExtend(style, rule, sheet, newStyle) {
       continue;
     }
 
-    if (isObject$1(style.extend[prop])) {
+    if (isObject(style.extend[prop])) {
       if (!(prop in newStyle)) newStyle[prop] = {};
       extend(style.extend[prop], rule, sheet, newStyle[prop]);
       continue;
@@ -19880,12 +19960,12 @@ function mergeRest(style, rule, sheet, newStyle) {
   for (var prop in style) {
     if (prop === 'extend') continue;
 
-    if (isObject$1(newStyle[prop]) && isObject$1(style[prop])) {
+    if (isObject(newStyle[prop]) && isObject(style[prop])) {
       extend(style[prop], rule, sheet, newStyle[prop]);
       continue;
     }
 
-    if (isObject$1(style[prop])) {
+    if (isObject(style[prop])) {
       newStyle[prop] = extend(style[prop], rule, sheet);
       continue;
     }
@@ -19956,9 +20036,9 @@ function jssExtend() {
   };
 }
 
-var separatorRegExp$1 = /\s*,\s*/g;
+var separatorRegExp = /\s*,\s*/g;
 var parentRegExp = /&/g;
-var refRegExp$1 = /\$([\w-]+)/g;
+var refRegExp = /\$([\w-]+)/g;
 /**
  * Convert nested rules to separate, remove them from original styles.
  *
@@ -19983,8 +20063,8 @@ function jssNested() {
   }
 
   function replaceParentRefs(nestedProp, parentProp) {
-    var parentSelectors = parentProp.split(separatorRegExp$1);
-    var nestedSelectors = nestedProp.split(separatorRegExp$1);
+    var parentSelectors = parentProp.split(separatorRegExp);
+    var nestedSelectors = nestedProp.split(separatorRegExp);
     var result = '';
 
     for (var i = 0; i < parentSelectors.length; i++) {
@@ -20039,7 +20119,7 @@ function jssNested() {
 
         if (!replaceRef) replaceRef = getReplaceRef(container, sheet); // Replace all $refs.
 
-        selector = selector.replace(refRegExp$1, replaceRef);
+        selector = selector.replace(refRegExp, replaceRef);
         container.addRule(selector, style[prop], _extends$1({}, options, {
           selector: selector
         }));
@@ -20138,19 +20218,19 @@ function jssCompose() {
 /* eslint-disable no-var, prefer-template */
 var uppercasePattern = /[A-Z]/g;
 var msPattern = /^ms-/;
-var cache = {};
+var cache$2 = {};
 
 function toHyphenLower(match) {
   return '-' + match.toLowerCase()
 }
 
 function hyphenateStyleName(name) {
-  if (cache.hasOwnProperty(name)) {
-    return cache[name]
+  if (cache$2.hasOwnProperty(name)) {
+    return cache$2[name]
   }
 
   var hName = name.replace(uppercasePattern, toHyphenLower);
-  return (cache[name] = msPattern.test(hName) ? '-' + hName : hName)
+  return (cache$2[name] = msPattern.test(hName) ? '-' + hName : hName)
 }
 
 /**
@@ -20323,6 +20403,7 @@ var defaultUnits = {
   'font-size': px,
   'font-size-delta': px,
   'letter-spacing': px,
+  'text-decoration-thickness': px,
   'text-indent': px,
   'text-stroke': px,
   'text-stroke-width': px,
@@ -20356,6 +20437,7 @@ var defaultUnits = {
   // Grid properties
   grid: px,
   'grid-gap': px,
+  'row-gap': px,
   'grid-row-gap': px,
   'grid-column-gap': px,
   'grid-template-rows': px,
@@ -20416,7 +20498,7 @@ function iterate(prop, value, options) {
         value[_innerProp] = iterate(prop + "-" + _innerProp, value[_innerProp], options);
       }
     }
-  } else if (typeof value === 'number') {
+  } else if (typeof value === 'number' && !Number.isNaN(value)) {
     var unit = options[prop] || units[prop]; // Add the unit if available, except for the special case of 0px.
 
     if (unit && !(value === 0 && unit === px)) {
@@ -20845,7 +20927,7 @@ function jssExpand() {
   };
 }
 
-function _arrayLikeToArray$1(arr, len) {
+function _arrayLikeToArray(arr, len) {
   if (len == null || len > arr.length) len = arr.length;
 
   for (var i = 0, arr2 = new Array(len); i < len; i++) {
@@ -20856,20 +20938,20 @@ function _arrayLikeToArray$1(arr, len) {
 }
 
 function _arrayWithoutHoles(arr) {
-  if (Array.isArray(arr)) return _arrayLikeToArray$1(arr);
+  if (Array.isArray(arr)) return _arrayLikeToArray(arr);
 }
 
-function _iterableToArray$1(iter) {
+function _iterableToArray(iter) {
   if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter);
 }
 
-function _unsupportedIterableToArray$1(o, minLen) {
+function _unsupportedIterableToArray(o, minLen) {
   if (!o) return;
-  if (typeof o === "string") return _arrayLikeToArray$1(o, minLen);
+  if (typeof o === "string") return _arrayLikeToArray(o, minLen);
   var n = Object.prototype.toString.call(o).slice(8, -1);
   if (n === "Object" && o.constructor) n = o.constructor.name;
   if (n === "Map" || n === "Set") return Array.from(o);
-  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray$1(o, minLen);
+  if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
 }
 
 function _nonIterableSpread() {
@@ -20877,12 +20959,12 @@ function _nonIterableSpread() {
 }
 
 function _toConsumableArray(arr) {
-  return _arrayWithoutHoles(arr) || _iterableToArray$1(arr) || _unsupportedIterableToArray$1(arr) || _nonIterableSpread();
+  return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
 }
 
 // Export javascript style and css style vendor prefixes.
 var js = '';
-var css$1 = '';
+var css = '';
 var vendor = '';
 var browser = '';
 var isTouch = isBrowser && 'ontouchstart' in document.documentElement; // We should not do anything if required serverside.
@@ -20902,10 +20984,10 @@ if (isBrowser) {
 
   var testProp = 'Transform';
 
-  for (var key in jsCssMap) {
-    if (key + testProp in style) {
-      js = key;
-      css$1 = jsCssMap[key];
+  for (var key$1 in jsCssMap) {
+    if (key$1 + testProp in style) {
+      js = key$1;
+      css = jsCssMap[key$1];
       break;
     }
   } // Correctly detect the Edge browser.
@@ -20913,7 +20995,7 @@ if (isBrowser) {
 
   if (js === 'Webkit' && 'msHyphens' in style) {
     js = 'ms';
-    css$1 = jsCssMap.ms;
+    css = jsCssMap.ms;
     browser = 'edge';
   } // Correctly detect the Safari browser.
 
@@ -20930,9 +21012,9 @@ if (isBrowser) {
  */
 
 
-var prefix = {
+var prefix$1 = {
   js: js,
-  css: css$1,
+  css: css,
   vendor: vendor,
   browser: browser,
   isTouch: isTouch
@@ -20951,8 +21033,8 @@ function supportedKeyframes(key) {
   if (key[1] === '-') return key; // No need to prefix IE/Edge. Older browsers will ignore unsupported rules.
   // https://caniuse.com/#search=keyframes
 
-  if (prefix.js === 'ms') return key;
-  return "@" + prefix.css + "keyframes" + key.substr(10);
+  if (prefix$1.js === 'ms') return key;
+  return "@" + prefix$1.css + "keyframes" + key.substr(10);
 }
 
 // https://caniuse.com/#search=appearance
@@ -20961,8 +21043,8 @@ var appearence = {
   noPrefill: ['appearance'],
   supportedProperty: function supportedProperty(prop) {
     if (prop !== 'appearance') return false;
-    if (prefix.js === 'ms') return "-webkit-" + prop;
-    return prefix.css + prop;
+    if (prefix$1.js === 'ms') return "-webkit-" + prop;
+    return prefix$1.css + prop;
   }
 };
 
@@ -20972,7 +21054,7 @@ var colorAdjust = {
   noPrefill: ['color-adjust'],
   supportedProperty: function supportedProperty(prop) {
     if (prop !== 'color-adjust') return false;
-    if (prefix.js === 'Webkit') return prefix.css + "print-" + prop;
+    if (prefix$1.js === 'Webkit') return prefix$1.css + "print-" + prop;
     return prop;
   }
 };
@@ -21023,15 +21105,15 @@ var mask = {
   supportedProperty: function supportedProperty(prop, style) {
     if (!/^mask/.test(prop)) return false;
 
-    if (prefix.js === 'Webkit') {
+    if (prefix$1.js === 'Webkit') {
       var longhand = 'mask-image';
 
       if (camelize(longhand) in style) {
         return prop;
       }
 
-      if (prefix.js + pascalize(longhand) in style) {
-        return prefix.css + prop;
+      if (prefix$1.js + pascalize(longhand) in style) {
+        return prefix$1.css + prop;
       }
     }
 
@@ -21046,8 +21128,8 @@ var textOrientation = {
   supportedProperty: function supportedProperty(prop) {
     if (prop !== 'text-orientation') return false;
 
-    if (prefix.vendor === 'apple' && !prefix.isTouch) {
-      return prefix.css + prop;
+    if (prefix$1.vendor === 'apple' && !prefix$1.isTouch) {
+      return prefix$1.css + prop;
     }
 
     return prop;
@@ -21065,7 +21147,7 @@ var transform = {
       return prop;
     }
 
-    return prefix.css + prop;
+    return prefix$1.css + prop;
   }
 };
 
@@ -21080,7 +21162,7 @@ var transition = {
       return prop;
     }
 
-    return prefix.css + prop;
+    return prefix$1.css + prop;
   }
 };
 
@@ -21091,8 +21173,8 @@ var writingMode = {
   supportedProperty: function supportedProperty(prop) {
     if (prop !== 'writing-mode') return false;
 
-    if (prefix.js === 'Webkit' || prefix.js === 'ms' && prefix.browser !== 'edge') {
-      return prefix.css + prop;
+    if (prefix$1.js === 'Webkit' || prefix$1.js === 'ms' && prefix$1.browser !== 'edge') {
+      return prefix$1.css + prop;
     }
 
     return prop;
@@ -21106,8 +21188,8 @@ var userSelect = {
   supportedProperty: function supportedProperty(prop) {
     if (prop !== 'user-select') return false;
 
-    if (prefix.js === 'Moz' || prefix.js === 'ms' || prefix.vendor === 'apple') {
-      return prefix.css + prop;
+    if (prefix$1.js === 'Moz' || prefix$1.js === 'ms' || prefix$1.vendor === 'apple') {
+      return prefix$1.css + prop;
     }
 
     return prop;
@@ -21122,12 +21204,12 @@ var breakPropsOld = {
   supportedProperty: function supportedProperty(prop, style) {
     if (!/^break-/.test(prop)) return false;
 
-    if (prefix.js === 'Webkit') {
+    if (prefix$1.js === 'Webkit') {
       var jsProp = "WebkitColumn" + pascalize(prop);
-      return jsProp in style ? prefix.css + "column-" + prop : false;
+      return jsProp in style ? prefix$1.css + "column-" + prop : false;
     }
 
-    if (prefix.js === 'Moz') {
+    if (prefix$1.js === 'Moz') {
       var _jsProp = "page" + pascalize(prop);
 
       return _jsProp in style ? "page-" + prop : false;
@@ -21142,9 +21224,9 @@ var breakPropsOld = {
 var inlineLogicalOld = {
   supportedProperty: function supportedProperty(prop, style) {
     if (!/^(border|margin|padding)-inline/.test(prop)) return false;
-    if (prefix.js === 'Moz') return prop;
+    if (prefix$1.js === 'Moz') return prop;
     var newProp = prop.replace('-inline', '');
-    return prefix.js + pascalize(newProp) in style ? prefix.css + newProp : false;
+    return prefix$1.js + pascalize(newProp) in style ? prefix$1.css + newProp : false;
   }
 };
 
@@ -21164,9 +21246,9 @@ var prefixed = {
     if (prop[0] === '-') return prop; // Return already prefixed value without prefixing.
 
     if (prop[0] === '-' && prop[1] === '-') return prop;
-    if (prefix.js + pascalized in style) return prefix.css + prop; // Try webkit fallback.
+    if (prefix$1.js + pascalized in style) return prefix$1.css + prop; // Try webkit fallback.
 
-    if (prefix.js !== 'Webkit' && "Webkit" + pascalized in style) return "-webkit-" + prop;
+    if (prefix$1.js !== 'Webkit' && "Webkit" + pascalized in style) return "-webkit-" + prop;
     return false;
   }
 };
@@ -21177,8 +21259,8 @@ var scrollSnap = {
   supportedProperty: function supportedProperty(prop) {
     if (prop.substring(0, 11) !== 'scroll-snap') return false;
 
-    if (prefix.js === 'ms') {
-      return "" + prefix.css + prop;
+    if (prefix$1.js === 'ms') {
+      return "" + prefix$1.css + prop;
     }
 
     return prop;
@@ -21191,8 +21273,8 @@ var overscrollBehavior = {
   supportedProperty: function supportedProperty(prop) {
     if (prop !== 'overscroll-behavior') return false;
 
-    if (prefix.js === 'ms') {
-      return prefix.css + "scroll-chaining";
+    if (prefix$1.js === 'ms') {
+      return prefix$1.css + "scroll-chaining";
     }
 
     return prop;
@@ -21214,7 +21296,7 @@ var flex2012 = {
   supportedProperty: function supportedProperty(prop, style) {
     var newProp = propMap[prop];
     if (!newProp) return false;
-    return prefix.js + pascalize(newProp) in style ? prefix.css + newProp : false;
+    return prefix$1.js + pascalize(newProp) in style ? prefix$1.css + newProp : false;
   }
 };
 
@@ -21230,7 +21312,7 @@ var propMap$1 = {
 var propKeys = Object.keys(propMap$1);
 
 var prefixCss = function prefixCss(p) {
-  return prefix.css + p;
+  return prefix$1.css + p;
 }; // Support old flex spec from 2009.
 
 
@@ -21242,13 +21324,13 @@ var flex2009 = {
       var newProp = propMap$1[prop];
 
       if (!Array.isArray(newProp)) {
-        return prefix.js + pascalize(newProp) in style ? prefix.css + newProp : false;
+        return prefix$1.js + pascalize(newProp) in style ? prefix$1.css + newProp : false;
       }
 
       if (!multiple) return false;
 
       for (var i = 0; i < newProp.length; i++) {
-        if (!(prefix.js + pascalize(newProp[0]) in style)) {
+        if (!(prefix$1.js + pascalize(newProp[0]) in style)) {
           return false;
         }
       }
@@ -21275,13 +21357,13 @@ var flex2009 = {
 // 'flex2009' going after 'flex2012'.
 // 'prefixed' going after 'unprefixed'
 
-var plugins$1 = [appearence, colorAdjust, mask, textOrientation, transform, transition, writingMode, userSelect, breakPropsOld, inlineLogicalOld, unprefixed, prefixed, scrollSnap, overscrollBehavior, flex2012, flex2009];
-var propertyDetectors = plugins$1.filter(function (p) {
+var plugins = [appearence, colorAdjust, mask, textOrientation, transform, transition, writingMode, userSelect, breakPropsOld, inlineLogicalOld, unprefixed, prefixed, scrollSnap, overscrollBehavior, flex2012, flex2009];
+var propertyDetectors = plugins.filter(function (p) {
   return p.supportedProperty;
 }).map(function (p) {
   return p.supportedProperty;
 });
-var noPrefill = plugins$1.filter(function (p) {
+var noPrefill = plugins.filter(function (p) {
   return p.noPrefill;
 }).reduce(function (a, p) {
   a.push.apply(a, _toConsumableArray(p.noPrefill));
@@ -21289,7 +21371,7 @@ var noPrefill = plugins$1.filter(function (p) {
 }, []);
 
 var el;
-var cache$1 = {};
+var cache = {};
 
 if (isBrowser) {
   el = document.createElement('p'); // We test every property on vendor prefix requirement.
@@ -21302,15 +21384,15 @@ if (isBrowser) {
 
   var computed = window.getComputedStyle(document.documentElement, '');
 
-  for (var key$1 in computed) {
+  for (var key$1$1 in computed) {
     // eslint-disable-next-line no-restricted-globals
-    if (!isNaN(key$1)) cache$1[computed[key$1]] = computed[key$1];
+    if (!isNaN(key$1$1)) cache[computed[key$1$1]] = computed[key$1$1];
   } // Properties that cannot be correctly detected using the
   // cache prefill method.
 
 
   noPrefill.forEach(function (x) {
-    return delete cache$1[x];
+    return delete cache[x];
   });
 }
 /**
@@ -21332,8 +21414,8 @@ function supportedProperty(prop, options) {
   // For server-side rendering.
   if (!el) return prop; // Remove cache for benchmark tests or return property from the cache.
 
-  if (process.env.NODE_ENV !== 'benchmark' && cache$1[prop] != null) {
-    return cache$1[prop];
+  if (process.env.NODE_ENV !== 'benchmark' && cache[prop] != null) {
+    return cache[prop];
   } // Check if 'transition' or 'transform' natively supported in browser.
 
 
@@ -21343,9 +21425,9 @@ function supportedProperty(prop, options) {
 
 
   for (var i = 0; i < propertyDetectors.length; i++) {
-    cache$1[prop] = propertyDetectors[i](prop, el.style, options); // Break loop, if value found.
+    cache[prop] = propertyDetectors[i](prop, el.style, options); // Break loop, if value found.
 
-    if (cache$1[prop]) break;
+    if (cache[prop]) break;
   } // Reset styles for current property.
   // Firefox can even throw an error for invalid properties, e.g., "0".
 
@@ -21356,7 +21438,7 @@ function supportedProperty(prop, options) {
     return false;
   }
 
-  return cache$1[prop];
+  return cache[prop];
 }
 
 var cache$1$1 = {};
@@ -21430,7 +21512,7 @@ function supportedValue(property, value) {
     prefixedValue = prefixedValue.replace(transPropsRegExp, prefixTransitionCallback);
   } else if (el$1.style[property] === '') {
     // Value with a vendor prefix.
-    prefixedValue = prefix.css + prefixedValue; // Hardcode test to convert "flex" to "-ms-flexbox" for IE10.
+    prefixedValue = prefix$1.css + prefixedValue; // Hardcode test to convert "flex" to "-ms-flexbox" for IE10.
 
     if (prefixedValue === '-ms-flex') el$1.style[property] = '-ms-flexbox'; // Test prefixed value.
 
@@ -21531,7 +21613,7 @@ function jssPropsSort() {
   };
 }
 
-var create$1 = function create(options) {
+var create = function create(options) {
   if (options === void 0) {
     options = {};
   }
@@ -21541,42 +21623,14 @@ var create$1 = function create(options) {
   };
 };
 
-function shallowEqualObjects(objA, objB) {
-  if (objA === objB) {
-    return true;
-  }
-
-  if (!objA || !objB) {
-    return false;
-  }
-
-  var aKeys = Object.keys(objA);
-  var bKeys = Object.keys(objB);
-  var len = aKeys.length;
-
-  if (bKeys.length !== len) {
-    return false;
-  }
-
-  for (var i = 0; i < len; i++) {
-    var key = aKeys[i];
-
-    if (objA[key] !== objB[key] || !Object.prototype.hasOwnProperty.call(objB, key)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-var defaultJss = create(create$1());
+create$1(create());
 
 // eslint-disable-next-line no-unused-vars
-var getDisplayName$1 = function getDisplayName(Component) {
+var getDisplayName = function getDisplayName(Component) {
   return Component.displayName || Component.name || 'Component';
 };
 
-var memoize$1 = function memoize(fn) {
+var memoize = function memoize(fn) {
   var lastArgs;
   var lastResult;
   return function () {
@@ -21685,7 +21739,7 @@ var unmanageSheet = function unmanageSheet(options) {
   manager.unmanage(options.theme);
 };
 
-var jss$1 = create(create$1());
+var jss = create$1(create());
 
 var sheetsMeta = new WeakMap();
 var getMeta = function getMeta(sheet) {
@@ -21745,10 +21799,10 @@ var createStyleSheet = function createStyleSheet(options) {
     return existingSheet;
   }
 
-  var jss$1$1 = options.context.jss || jss$1;
+  var jss$1 = options.context.jss || jss;
   var styles = getStyles(options);
   var dynamicStyles = getDynamicStyles(styles);
-  var sheet = jss$1$1.createStyleSheet(styles, getSheetOptions(options, dynamicStyles !== null));
+  var sheet = jss$1.createStyleSheet(styles, getSheetOptions(options, dynamicStyles !== null));
   addMeta(sheet, {
     dynamicStyles: dynamicStyles,
     styles: styles
@@ -21839,7 +21893,7 @@ var createWithStyles = function createWithStyles(styles, options) {
       index = _options$index === void 0 ? getSheetIndex() : _options$index,
       theming = _options.theming,
       injectTheme = _options.injectTheme,
-      sheetOptions = _objectWithoutPropertiesLoose$1(_options, ["index", "theming", "injectTheme"]);
+      sheetOptions = _objectWithoutPropertiesLoose(_options, ["index", "theming", "injectTheme"]);
 
   var isThemingEnabled = typeof styles === 'function';
   var ThemeConsumer = theming && theming.context.Consumer || ThemeContext.Consumer;
@@ -21848,7 +21902,7 @@ var createWithStyles = function createWithStyles(styles, options) {
       InnerComponent = NoRenderer;
     }
 
-    var displayName = getDisplayName$1(InnerComponent);
+    var displayName = getDisplayName(InnerComponent);
 
     var getTheme = function getTheme(props) {
       return isThemingEnabled ? props.theme : noTheme;
@@ -21857,7 +21911,7 @@ var createWithStyles = function createWithStyles(styles, options) {
     var WithStyles =
     /*#__PURE__*/
     function (_React$Component) {
-      _inheritsLoose(WithStyles, _React$Component);
+      _inheritsLoose$1(WithStyles, _React$Component);
 
       // $FlowFixMe[prop-missing]
       WithStyles.createState = function createState(props) {
@@ -21921,7 +21975,7 @@ var createWithStyles = function createWithStyles(styles, options) {
         var _this;
 
         _this = _React$Component.call(this, props) || this;
-        _this.mergeClassesProp = memoize$1(function (sheetClasses, classesProp) {
+        _this.mergeClassesProp = memoize(function (sheetClasses, classesProp) {
           return classesProp ? mergeClasses(sheetClasses, classesProp) : sheetClasses;
         });
         _this.state = WithStyles.createState(props);
@@ -21965,11 +22019,11 @@ var createWithStyles = function createWithStyles(styles, options) {
 
       _proto.render = function render() {
         var _this$props = this.props,
-            innerRef = _this$props.innerRef,
-            jssContext = _this$props.jssContext,
-            theme = _this$props.theme,
+            innerRef = _this$props.innerRef;
+            _this$props.jssContext;
+            var theme = _this$props.theme,
             classes = _this$props.classes,
-            rest = _objectWithoutPropertiesLoose$1(_this$props, ["innerRef", "jssContext", "theme", "classes"]);
+            rest = _objectWithoutPropertiesLoose(_this$props, ["innerRef", "jssContext", "theme", "classes"]);
 
         var sheetClasses = this.state.classes;
 
@@ -22028,19 +22082,19 @@ var createUseStyles = function createUseStyles(styles, options) {
       index = _options$index === void 0 ? getSheetIndex() : _options$index,
       theming = _options.theming,
       name = _options.name,
-      sheetOptions = _objectWithoutPropertiesLoose$1(_options, ["index", "theming", "name"]);
+      sheetOptions = _objectWithoutPropertiesLoose(_options, ["index", "theming", "name"]);
 
   var ThemeContext$1 = theming && theming.context || ThemeContext;
   var useTheme = typeof styles === 'function' ? // $FlowFixMe[incompatible-return]
   function () {
-    return useContext$1(ThemeContext$1) || noTheme$1;
+    return useContext(ThemeContext$1) || noTheme$1;
   } : // $FlowFixMe[incompatible-return]
   function () {
     return noTheme$1;
   };
   return function useStyles(data) {
     var isFirstMount = useRef(true);
-    var context = useContext$1(JssContext);
+    var context = useContext(JssContext);
     var theme = useTheme();
 
     var _React$useMemo = useMemo(function () {
@@ -22102,115 +22156,9 @@ var createUseStyles = function createUseStyles(styles, options) {
   };
 };
 
-var initialContext = {};
-
-var JssProvider =
-/*#__PURE__*/
-function (_React$Component) {
-  _inheritsLoose(JssProvider, _React$Component);
-
-  function JssProvider() {
-    var _this;
-
-    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    _this = _React$Component.call.apply(_React$Component, [this].concat(args)) || this;
-    _this.managers = {};
-
-    _this.createContext = function (parentContext, prevContext) {
-      if (prevContext === void 0) {
-        prevContext = initialContext;
-      }
-
-      var _this$props = _this.props,
-          registry = _this$props.registry,
-          classNamePrefix = _this$props.classNamePrefix,
-          jss = _this$props.jss,
-          generateId = _this$props.generateId,
-          disableStylesGeneration = _this$props.disableStylesGeneration,
-          media = _this$props.media,
-          id = _this$props.id;
-
-      var context = _extends$1({}, parentContext);
-
-      if (registry) {
-        context.registry = registry; // This way we identify a new request on the server, because user will create
-        // a new Registry instance for each.
-
-        if (registry !== _this.registry) {
-          // We reset managers because we have to regenerate all sheets for the new request.
-          _this.managers = {};
-          _this.registry = registry;
-        }
-      }
-
-      context.managers = _this.managers;
-
-      if (id !== undefined) {
-        context.id = id;
-      }
-
-      if (generateId !== undefined) {
-        context.generateId = generateId;
-      } else if (!context.generateId || !prevContext || context.id !== prevContext.id) {
-        context.generateId = createGenerateId(context.id);
-      }
-
-      if (classNamePrefix) {
-        context.classNamePrefix = (context.classNamePrefix || '') + classNamePrefix;
-      }
-
-      if (media !== undefined) {
-        context.media = media;
-      }
-
-      if (jss) {
-        context.jss = jss;
-      }
-
-      if (disableStylesGeneration !== undefined) {
-        context.disableStylesGeneration = disableStylesGeneration;
-      }
-
-      if (prevContext && shallowEqualObjects(prevContext, context)) {
-        return prevContext;
-      }
-
-      return context;
-    };
-
-    _this.prevContext = void 0;
-    _this.generateId = void 0;
-    _this.registry = void 0;
-
-    _this.renderProvider = function (parentContext) {
-      var children = _this.props.children;
-
-      var context = _this.createContext(parentContext, _this.prevContext);
-
-      _this.prevContext = context;
-      return createElement(JssContext.Provider, {
-        value: context
-      }, children);
-    };
-
-    return _this;
-  }
-
-  var _proto = JssProvider.prototype;
-
-  _proto.render = function render() {
-    return createElement(JssContext.Consumer, null, this.renderProvider);
-  };
-
-  return JssProvider;
-}(Component);
-
-JssProvider.propTypes = {
+({
   registry: propTypes.instanceOf(SheetsRegistry),
-  jss: propTypes.instanceOf(jss.constructor),
+  jss: propTypes.instanceOf(jss$1.constructor),
   generateId: propTypes.func,
   classNamePrefix: propTypes.string,
   disableStylesGeneration: propTypes.bool,
@@ -22219,9 +22167,9 @@ JssProvider.propTypes = {
   id: propTypes.shape({
     minify: propTypes.bool
   })
-};
+});
 
-var useDropDownStyles = createUseStyles({
+createUseStyles({
   root: {},
   inline: {
     /**uk-inline */
@@ -22257,7 +22205,7 @@ var useDropDownStyles = createUseStyles({
     fontSize: "0.875rem"
   }
 });
-var useDropDownLinkStyle = createUseStyles({
+createUseStyles({
   root: {
     /* Hover + Focus + Active */
     padding: "5px 0",
@@ -22587,7 +22535,7 @@ var tabStripStyle = function tabStripStyle(alignment, selected, disabled, animat
     };
   }
 
-  var styles = noImportant$1.StyleSheet.create({
+  var styles = noImportant.StyleSheet.create({
     "default": _objectSpread2(_objectSpread2({}, _default), borderStyle),
     text: _objectSpread2(_objectSpread2(_objectSpread2(_objectSpread2(_objectSpread2({}, textColor), pointerEvents), borderColorStyle), {}, {
       border: '2px solid transparent',
@@ -22771,28 +22719,28 @@ var offCanvasStyle = {
   }
 };
 
-var css_248z = ".icon-module_icon__1Da-y{fill:currentcolor;font:inherit;color:inherit;border:none;margin:0;display:inline-block;padding:0;overflow:visible;line-height:0;border-radius:0;text-transform:none;background-color:transparent}.icon-module_icon__1Da-y>*{-webkit-transform:translate(0);transform:translate(0)}.icon-module_icon__1Da-y::-moz-focus-inner{border:0;padding:0}.icon-module_iconSmallRight__vhJW9{margin-right:10px!important}.icon-module_iconLink__FNpkj{color:#999}.icon-module_iconButton__1ZGoX{width:36px;height:36px;background:#f8f8f8;-webkit-box-sizing:border-box;box-sizing:border-box;-webkit-transition:.1s ease-in-out;transition:.1s ease-in-out;border-radius:500px;vertical-align:middle;-webkit-transition-property:color;transition-property:color}.icon-module_formIcon__a3WSa,.icon-module_iconButton__1ZGoX{color:#999;display:-webkit-inline-box;display:-ms-inline-flexbox;display:inline-flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center}.icon-module_formIcon__a3WSa{top:0;left:auto;right:0;width:40px;bottom:0;position:absolute}";
-var styles = {"icon":"icon-module_icon__1Da-y","iconSmallRight":"icon-module_iconSmallRight__vhJW9","iconLink":"icon-module_iconLink__FNpkj","iconButton":"icon-module_iconButton__1ZGoX","formIcon":"icon-module_formIcon__a3WSa"};
-styleInject(css_248z);
+var css_248z$3 = ".icon-module_icon__1Da-y{fill:currentcolor;font:inherit;color:inherit;border:none;margin:0;display:inline-block;padding:0;overflow:visible;line-height:0;border-radius:0;text-transform:none;background-color:initial}.icon-module_icon__1Da-y>*{-webkit-transform:translate(0);transform:translate(0)}.icon-module_icon__1Da-y::-moz-focus-inner{border:0;padding:0}.icon-module_iconSmallRight__vhJW9{margin-right:10px!important}.icon-module_iconLink__FNpkj{color:#999}.icon-module_iconButton__1ZGoX{width:36px;height:36px;background:#f8f8f8;-webkit-box-sizing:border-box;box-sizing:border-box;-webkit-transition:.1s ease-in-out;transition:.1s ease-in-out;border-radius:500px;vertical-align:middle;-webkit-transition-property:color;transition-property:color}.icon-module_formIcon__a3WSa,.icon-module_iconButton__1ZGoX{color:#999;display:-webkit-inline-box;display:-ms-inline-flexbox;display:inline-flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center}.icon-module_formIcon__a3WSa{top:0;left:auto;right:0;width:40px;bottom:0;position:absolute}";
+var styles$3 = {"icon":"icon-module_icon__1Da-y","iconSmallRight":"icon-module_iconSmallRight__vhJW9","iconLink":"icon-module_iconLink__FNpkj","iconButton":"icon-module_iconButton__1ZGoX","formIcon":"icon-module_formIcon__a3WSa"};
+styleInject(css_248z$3);
 
-var RegularIcon = function RegularIcon(_ref) {
-  var props = _extends({}, _ref);
+var Icon = function Icon(_ref) {
+  var props = _extends$2({}, _ref);
 
-  var name = props.name,
-      size = props.size,
-      isButton = props.isButton,
+  props.name;
+      props.size;
+      var isButton = props.isButton,
       customLinkClassName = props.linkClassName,
       link = props.link,
-      customClassName = props.className,
-      classes = props.classes,
-      formIcon = props.formIcon,
+      customClassName = props.className;
+      props.classes;
+      var formIcon = props.formIcon,
       smallRightMargin = props.smallRightMargin,
       other = _objectWithoutProperties(props, ["name", "size", "isButton", "linkClassName", "link", "className", "classes", "formIcon", "smallRightMargin"]);
 
   var className = classnames("uk-icon", {
     "uk-margin-small-right": smallRightMargin
-  }, _defineProperty({}, styles.formIcon, formIcon), customClassName);
-  var iconProp = "icon:".concat(props.name, ";ratio:").concat(props.size, ";");
+  }, _defineProperty$1({}, styles$3.formIcon, formIcon), customClassName);
+  "icon:".concat(props.name, ";ratio:").concat(props.size, ";");
   var width = props.size * 20;
   var height = props.size * 20;
   var linkClassName = classnames(customLinkClassName, "uk-margin-small-right", {
@@ -22803,13 +22751,13 @@ var RegularIcon = function RegularIcon(_ref) {
     href: "//".concat(props.link),
     target: props.target,
     className: linkClassName
-  }, /*#__PURE__*/React.createElement("span", _extends({
+  }, /*#__PURE__*/React.createElement("span", _extends$2({
     dangerouslySetInnerHTML: {
       __html: iconList(width, height, props.name)
     }
   }, other, {
     className: className
-  }))) : /*#__PURE__*/React.createElement("span", _extends({
+  }))) : /*#__PURE__*/React.createElement("span", _extends$2({
     dangerouslySetInnerHTML: {
       __html: iconList(width, height, props.name)
     }
@@ -22817,8 +22765,7 @@ var RegularIcon = function RegularIcon(_ref) {
     className: className
   }));
 };
-
-RegularIcon.propTypes = {
+Icon.propTypes = {
   name: propTypes.string.isRequired,
   size: propTypes.number,
   isButton: propTypes.bool,
@@ -22828,7 +22775,7 @@ RegularIcon.propTypes = {
   formIcon: propTypes.bool,
   smallRightMargin: propTypes.bool
 };
-RegularIcon.defaultProps = {
+Icon.defaultProps = {
   name: "",
   size: 1,
   isButton: false,
@@ -22838,10 +22785,9 @@ RegularIcon.defaultProps = {
   formIcon: false,
   smallRightMargin: false
 };
-var _icon = RegularIcon;
 
-var css_248z$1 = "\r\n\r\n/*! UIkit 3.1.4 | http://www.getuikit.com | (c) 2014 - 2018 YOOtheme | MIT License */.uk-button{margin:0;border:none;overflow:visible;font:inherit;color:inherit;text-transform:none;display:inline-block;-webkit-box-sizing:border-box;box-sizing:border-box;padding:0 30px;vertical-align:middle;font-size:14px;font-size:.875rem;line-height:38px;text-align:center;text-decoration:none;text-transform:uppercase;-webkit-transition:.1s ease-in-out;transition:.1s ease-in-out;-webkit-transition-property:color,background-color,border-color;transition-property:color,background-color,border-color}.uk-button:not(:disabled){cursor:pointer}.uk-button::-moz-focus-inner{border:0;padding:0}.uk-button:hover{text-decoration:none}.uk-button:focus{outline:none}.uk-button-default{background-color:transparent;color:#333;border:1px solid #e5e5e5}.uk-button-default:focus,.uk-button-default:hover{background-color:transparent;color:#333;border-color:#b2b2b2}.uk-button-default.uk-active,.uk-button-default:active{background-color:transparent;color:#333;border-color:#999}.uk-button-primary{background-color:#1e87f0;color:#fff;border:1px solid transparent}.uk-button-primary:focus,.uk-button-primary:hover{background-color:#0f7ae5;color:#fff}.uk-button-primary.uk-active,.uk-button-primary:active{background-color:#0e6dcd;color:#fff}.uk-button-secondary{background-color:#222;color:#fff;border:1px solid transparent}.uk-button-secondary:focus,.uk-button-secondary:hover{background-color:#151515;color:#fff}.uk-button-secondary.uk-active,.uk-button-secondary:active{background-color:#080808;color:#fff}.uk-button-danger{background-color:#f0506e;color:#fff;border:1px solid transparent}.uk-button-danger:focus,.uk-button-danger:hover{background-color:#ee395b;color:#fff}.uk-button-danger.uk-active,.uk-button-danger:active{background-color:#ec2147;color:#fff}.uk-button-danger:disabled,.uk-button-default:disabled,.uk-button-primary:disabled,.uk-button-secondary:disabled{background-color:transparent;color:#999;border-color:#e5e5e5}.uk-button-small{padding:0 15px;line-height:28px;font-size:14px;font-size:.875rem}.uk-button-large{padding:0 40px;line-height:53px;font-size:14px;font-size:.875rem}.uk-button-text{padding:0;line-height:1.5;background:none;color:#333;position:relative}.uk-button-text:before{content:\"\";position:absolute;bottom:0;left:0;right:100%;border-bottom:1px solid #333;-webkit-transition:right .3s ease-out;transition:right .3s ease-out}.uk-button-text:focus,.uk-button-text:hover{color:#333}.uk-button-text:focus:before,.uk-button-text:hover:before{right:0}.uk-button-text:disabled{color:#999}.uk-button-text:disabled:before{display:none}.uk-button-link{padding:0;line-height:1.5;background:none;color:#1e87f0}.uk-button-link:focus,.uk-button-link:hover{color:#0f6ecd;text-decoration:underline}.uk-button-link:disabled{color:#999;text-decoration:none}.uk-button-group{display:-webkit-inline-box;display:-ms-inline-flexbox;display:inline-flex;vertical-align:middle;position:relative}.uk-button-group>.uk-button:nth-child(n+2),.uk-button-group>div:nth-child(n+2) .uk-button{margin-left:-1px}.uk-button-group .uk-button.uk-active,.uk-button-group .uk-button:active,.uk-button-group .uk-button:focus,.uk-button-group .uk-button:hover{position:relative;z-index:1}";
-styleInject(css_248z$1);
+var css_248z$2 = "\r\n\r\n/*! UIkit 3.1.4 | http://www.getuikit.com | (c) 2014 - 2018 YOOtheme | MIT License */.uk-button{margin:0;border:none;overflow:visible;font:inherit;color:inherit;text-transform:none;display:inline-block;-webkit-box-sizing:border-box;box-sizing:border-box;padding:0 30px;vertical-align:middle;font-size:14px;font-size:.875rem;line-height:38px;text-align:center;text-decoration:none;text-transform:uppercase;-webkit-transition:.1s ease-in-out;transition:.1s ease-in-out;-webkit-transition-property:color,background-color,border-color;transition-property:color,background-color,border-color}.uk-button:not(:disabled){cursor:pointer}.uk-button::-moz-focus-inner{border:0;padding:0}.uk-button:hover{text-decoration:none}.uk-button:focus{outline:none}.uk-button-default{background-color:initial;color:#333;border:1px solid #e5e5e5}.uk-button-default:focus,.uk-button-default:hover{background-color:initial;color:#333;border-color:#b2b2b2}.uk-button-default.uk-active,.uk-button-default:active{background-color:initial;color:#333;border-color:#999}.uk-button-primary{background-color:#1e87f0;color:#fff;border:1px solid transparent}.uk-button-primary:focus,.uk-button-primary:hover{background-color:#0f7ae5;color:#fff}.uk-button-primary.uk-active,.uk-button-primary:active{background-color:#0e6dcd;color:#fff}.uk-button-secondary{background-color:#222;color:#fff;border:1px solid transparent}.uk-button-secondary:focus,.uk-button-secondary:hover{background-color:#151515;color:#fff}.uk-button-secondary.uk-active,.uk-button-secondary:active{background-color:#080808;color:#fff}.uk-button-danger{background-color:#f0506e;color:#fff;border:1px solid transparent}.uk-button-danger:focus,.uk-button-danger:hover{background-color:#ee395b;color:#fff}.uk-button-danger.uk-active,.uk-button-danger:active{background-color:#ec2147;color:#fff}.uk-button-danger:disabled,.uk-button-default:disabled,.uk-button-primary:disabled,.uk-button-secondary:disabled{background-color:initial;color:#999;border-color:#e5e5e5}.uk-button-small{padding:0 15px;line-height:28px;font-size:14px;font-size:.875rem}.uk-button-large{padding:0 40px;line-height:53px;font-size:14px;font-size:.875rem}.uk-button-text{padding:0;line-height:1.5;background:none;color:#333;position:relative}.uk-button-text:before{content:\"\";position:absolute;bottom:0;left:0;right:100%;border-bottom:1px solid #333;-webkit-transition:right .3s ease-out;transition:right .3s ease-out}.uk-button-text:focus,.uk-button-text:hover{color:#333}.uk-button-text:focus:before,.uk-button-text:hover:before{right:0}.uk-button-text:disabled{color:#999}.uk-button-text:disabled:before{display:none}.uk-button-link{padding:0;line-height:1.5;background:none;color:#1e87f0}.uk-button-link:focus,.uk-button-link:hover{color:#0f6ecd;text-decoration:underline}.uk-button-link:disabled{color:#999;text-decoration:none}.uk-button-group{display:-webkit-inline-box;display:-ms-inline-flexbox;display:inline-flex;vertical-align:middle;position:relative}.uk-button-group>.uk-button:nth-child(n+2),.uk-button-group>div:nth-child(n+2) .uk-button{margin-left:-1px}.uk-button-group .uk-button.uk-active,.uk-button-group .uk-button:active,.uk-button-group .uk-button:focus,.uk-button-group .uk-button:hover{position:relative;z-index:1}";
+styleInject(css_248z$2);
 
 var Button = /*#__PURE__*/function (_Component) {
   _inherits(Button, _Component);
@@ -22854,7 +22800,7 @@ var Button = /*#__PURE__*/function (_Component) {
     return _super.apply(this, arguments);
   }
 
-  _createClass(Button, [{
+  _createClass$1(Button, [{
     key: "componentWillReceiveProps",
     value: function componentWillReceiveProps(nextProps) {
       if (nextProps.disableids) {
@@ -22881,9 +22827,9 @@ var Button = /*#__PURE__*/function (_Component) {
           secondary = _this$props.secondary,
           text = _this$props.text,
           fullWidth = _this$props.fullWidth,
-          customClassName = _this$props.className,
-          dispatch = _this$props.dispatch,
-          children = _this$props.children,
+          customClassName = _this$props.className;
+          _this$props.dispatch;
+          var children = _this$props.children,
           icon = _this$props.icon,
           imageUrl = _this$props.imageUrl,
           imageWidth = _this$props.imageWidth,
@@ -22907,10 +22853,10 @@ var Button = /*#__PURE__*/function (_Component) {
       });
       var iconCls = classnames("uk-margin-small-right", customIconClass);
       var fontCls = classnames("uk-margin-small-right", customIconClassName);
-      return /*#__PURE__*/React.createElement("button", _extends({}, other, {
+      return /*#__PURE__*/React.createElement("button", _extends$2({}, other, {
         className: className,
         disabled: disabled
-      }), icon && /*#__PURE__*/React.createElement(_icon, {
+      }), icon && /*#__PURE__*/React.createElement(Icon, {
         name: icon,
         className: iconCls,
         style: iconStyle
@@ -22984,18 +22930,18 @@ var RegularButtonGroup = /*#__PURE__*/function (_Component) {
     return _super.call(this, props);
   }
 
-  _createClass(RegularButtonGroup, [{
+  _createClass$1(RegularButtonGroup, [{
     key: "render",
     value: function render() {
       var _this$props = this.props,
           children = _this$props.children,
           customClassName = _this$props.className,
-          disabled = _this$props.disabled,
-          classes = _this$props.classes,
-          other = _objectWithoutProperties(_this$props, ["children", "className", "disabled", "classes"]);
+          disabled = _this$props.disabled;
+          _this$props.classes;
+          var other = _objectWithoutProperties(_this$props, ["children", "className", "disabled", "classes"]);
 
       var className = classnames(buttonGroupStyle.root, customClassName);
-      return /*#__PURE__*/React.createElement("span", _extends({}, other, {
+      return /*#__PURE__*/React.createElement("span", _extends$2({}, other, {
         className: className
       }), React.Children.map(children, function (item, index) {
         return /*#__PURE__*/cloneElement(item, _objectSpread2(_objectSpread2({
@@ -23020,9 +22966,9 @@ RegularButtonGroup.defaultProps = {
 };
 var styledButtonGroup = createWithStyles(buttonGroupStyle)(RegularButtonGroup);
 
-var css_248z$2 = ".dropdown-button-module_inline__125gR{display:inline-block;position:relative;max-width:100%;vertical-align:middle;-webkit-backface-visibility:hidden;backface-visibility:hidden}.dropdown-button-module_dropDown__3MT3F{display:none;position:absolute;z-index:1020;-webkit-box-sizing:border-box;box-sizing:border-box;min-width:200px;padding:25px;background:#fff;color:#666;-webkit-box-shadow:0 5px 12px rgba(0,0,0,.15);box-shadow:0 5px 12px rgba(0,0,0,.15);list-style:none}.dropdown-button-module_dropDownOpen__2giO5{display:block}.dropdown-button-module_dropDownNav__2UwuM{margin:0;padding:0;list-style:none;white-space:nowrap;font-size:14px;font-size:.875rem}.dropdown-button-module_dropDownItem__2s34m{padding:5px 0;display:block;text-decoration:none;cursor:pointer;color:#999}.dropdown-button-module_dropDownItem__2s34m:focus,.dropdown-button-module_dropDownItem__2s34m:hover{color:#666;text-decoration:none}.dropdown-button-module_dropDownItem__2s34m:focus{outline:none}.dropdown-button-module_disabledItem__3xcWy{cursor:default;opacity:.6}.dropdown-button-module_iconStyle__3e8eD{margin-right:10px!important}";
-var styles$1 = {"inline":"dropdown-button-module_inline__125gR","dropDown":"dropdown-button-module_dropDown__3MT3F","dropDownOpen":"dropdown-button-module_dropDownOpen__2giO5","dropDownNav":"dropdown-button-module_dropDownNav__2UwuM","dropDownItem":"dropdown-button-module_dropDownItem__2s34m","disabledItem":"dropdown-button-module_disabledItem__3xcWy","iconStyle":"dropdown-button-module_iconStyle__3e8eD"};
-styleInject(css_248z$2);
+var css_248z$1 = ".dropdown-button-module_inline__125gR{display:inline-block;position:relative;max-width:100%;vertical-align:middle;-webkit-backface-visibility:hidden;backface-visibility:hidden}.dropdown-button-module_dropDown__3MT3F{display:none;position:absolute;z-index:1020;-webkit-box-sizing:border-box;box-sizing:border-box;min-width:200px;padding:25px;background:#fff;color:#666;-webkit-box-shadow:0 5px 12px rgba(0,0,0,.15);box-shadow:0 5px 12px rgba(0,0,0,.15);list-style:none}.dropdown-button-module_dropDownOpen__2giO5{display:block}.dropdown-button-module_dropDownNav__2UwuM{margin:0;padding:0;list-style:none;white-space:nowrap;font-size:14px;font-size:.875rem}.dropdown-button-module_dropDownItem__2s34m{padding:5px 0;display:block;text-decoration:none;cursor:pointer;color:#999}.dropdown-button-module_dropDownItem__2s34m:focus,.dropdown-button-module_dropDownItem__2s34m:hover{color:#666;text-decoration:none}.dropdown-button-module_dropDownItem__2s34m:focus{outline:none}.dropdown-button-module_disabledItem__3xcWy{cursor:default;opacity:.6}.dropdown-button-module_iconStyle__3e8eD{margin-right:10px!important}";
+var styles$2 = {"inline":"dropdown-button-module_inline__125gR","dropDown":"dropdown-button-module_dropDown__3MT3F","dropDownOpen":"dropdown-button-module_dropDownOpen__2giO5","dropDownNav":"dropdown-button-module_dropDownNav__2UwuM","dropDownItem":"dropdown-button-module_dropDownItem__2s34m","disabledItem":"dropdown-button-module_disabledItem__3xcWy","iconStyle":"dropdown-button-module_iconStyle__3e8eD"};
+styleInject(css_248z$1);
 
 var DropDownButton = /*#__PURE__*/function (_Component) {
   _inherits(DropDownButton, _Component);
@@ -23072,15 +23018,15 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
       currentItemIndex: -1
     };
     _this.dropDownRef = /*#__PURE__*/React.createRef();
-    _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
-    _this.handleMouseEnter = _this.handleMouseEnter.bind(_assertThisInitialized(_this));
-    _this.handleMouseLeave = _this.handleMouseLeave.bind(_assertThisInitialized(_this));
-    _this.handleItemClick = _this.handleItemClick.bind(_assertThisInitialized(_this));
-    _this.toggleDropDown = _this.toggleDropDown.bind(_assertThisInitialized(_this));
-    _this.openDropDown = _this.openDropDown.bind(_assertThisInitialized(_this));
-    _this.closeDropDown = _this.closeDropDown.bind(_assertThisInitialized(_this));
-    _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized(_this));
-    _this.handleItemKeyDown = _this.handleItemKeyDown.bind(_assertThisInitialized(_this));
+    _this.handleClick = _this.handleClick.bind(_assertThisInitialized$2(_this));
+    _this.handleMouseEnter = _this.handleMouseEnter.bind(_assertThisInitialized$2(_this));
+    _this.handleMouseLeave = _this.handleMouseLeave.bind(_assertThisInitialized$2(_this));
+    _this.handleItemClick = _this.handleItemClick.bind(_assertThisInitialized$2(_this));
+    _this.toggleDropDown = _this.toggleDropDown.bind(_assertThisInitialized$2(_this));
+    _this.openDropDown = _this.openDropDown.bind(_assertThisInitialized$2(_this));
+    _this.closeDropDown = _this.closeDropDown.bind(_assertThisInitialized$2(_this));
+    _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized$2(_this));
+    _this.handleItemKeyDown = _this.handleItemKeyDown.bind(_assertThisInitialized$2(_this));
     _this.listRef = /*#__PURE__*/React.createRef();
     _this.keyCode = Object.freeze({
       TAB: 9,
@@ -23100,7 +23046,7 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
     return _this;
   }
 
-  _createClass(DropDownButton, [{
+  _createClass$1(DropDownButton, [{
     key: "componentDidMount",
     value: function componentDidMount() {
       document.addEventListener("mousedown", this.outSideEvent);
@@ -23277,15 +23223,15 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
           items = _this$props.items,
           text = _this$props.text,
           buttonProps = _this$props.buttonProps,
-          mode = _this$props.mode,
-          animation = _this$props.animation,
-          duration = _this$props.duration,
-          textField = _this$props.textField,
+          mode = _this$props.mode;
+          _this$props.animation;
+          _this$props.duration;
+          var textField = _this$props.textField,
           children = _this$props.children,
-          attribute = _this$props.attribute,
-          onItemClick = _this$props.onItemClick,
-          onItemKeyDown = _this$props.onItemKeyDown,
-          other = _objectWithoutProperties(_this$props, ["className", "listClassName", "items", "text", "buttonProps", "mode", "animation", "duration", "textField", "children", "attribute", "onItemClick", "onItemKeyDown"]);
+          attribute = _this$props.attribute;
+          _this$props.onItemClick;
+          _this$props.onItemKeyDown;
+          var other = _objectWithoutProperties(_this$props, ["className", "listClassName", "items", "text", "buttonProps", "mode", "animation", "duration", "textField", "children", "attribute", "onItemClick", "onItemKeyDown"]);
 
       var isOpen = this.state.isOpen;
       var eventHandlers = {
@@ -23297,8 +23243,8 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
         eventHandlers.onMouseLeave = handleMouseLeave;
       }
 
-      var className = classnames(customClassName, styles$1.inline);
-      var listClassName = classnames(customListClassName, styles$1.dropDown, _defineProperty({}, styles$1.dropDownOpen, isOpen & !buttonProps["disabled"]));
+      var className = classnames(customClassName, styles$2.inline);
+      var listClassName = classnames(customListClassName, styles$2.dropDown, _defineProperty$1({}, styles$2.dropDownOpen, isOpen & !buttonProps["disabled"]));
       var itemEventHandlers = {
         onClick: handleItemClick,
         onKeyDown: handleItemKeyDown
@@ -23311,22 +23257,22 @@ var DropDownButton = /*#__PURE__*/function (_Component) {
         role: this.props.role || "menu"
       });
 
-      return /*#__PURE__*/React.createElement("div", _extends({
+      return /*#__PURE__*/React.createElement("div", _extends$2({
         className: className
       }, other, {
         ref: this.dropDownRef,
         tabIndex: 0,
         onKeyDown: this.handleKeyDown
-      }), /*#__PURE__*/React.createElement(_Button, _extends({}, eventHandlers, buttonProps, attrs), text), /*#__PURE__*/React.createElement("div", {
+      }), /*#__PURE__*/React.createElement(_Button, _extends$2({}, eventHandlers, buttonProps, attrs), text), /*#__PURE__*/React.createElement("div", {
         className: listClassName
       }, /*#__PURE__*/React.createElement("ul", {
-        className: styles$1.dropDownNav,
+        className: styles$2.dropDownNav,
         ref: this.listRef
       }, items.length ? items.map(function (item$1, index) {
-        return _typeof(item$1) === "object" ? /*#__PURE__*/React.createElement(item, _extends({
+        return _typeof$1(item$1) === "object" ? /*#__PURE__*/React.createElement(item, _extends$2({
           key: "item-".concat(index),
           text: textField ? item$1[textField] : item$1.text
-        }, item$1.other, itemEventHandlers)) : /*#__PURE__*/React.createElement(item, _extends({
+        }, item$1.other, itemEventHandlers)) : /*#__PURE__*/React.createElement(item, _extends$2({
           key: "".concat(item$1, "-").concat(index),
           text: item$1
         }, itemEventHandlers));
@@ -23380,12 +23326,12 @@ var DropDownButtonItem = /*#__PURE__*/function (_Component) {
     _classCallCheck(this, DropDownButtonItem);
 
     _this = _super.call(this, props);
-    _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
-    _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized(_this));
+    _this.handleClick = _this.handleClick.bind(_assertThisInitialized$2(_this));
+    _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized$2(_this));
     return _this;
   }
 
-  _createClass(DropDownButtonItem, [{
+  _createClass$1(DropDownButtonItem, [{
     key: "handleClick",
     value: function handleClick(e) {
       e.preventDefault();
@@ -23422,21 +23368,21 @@ var DropDownButtonItem = /*#__PURE__*/function (_Component) {
           iconStyle = _this$props.iconStyle,
           other = _objectWithoutProperties(_this$props, ["className", "listClassName", "text", "disabled", "link", "linkTarget", "icon", "imageUrl", "imageWidth", "imageHeight", "iconClass", "iconClassName", "iconStyle"]);
 
-      var listClass = classnames(customListClassName, _defineProperty({}, styles$1.disabledItem, disabled));
-      var linkClass = classnames(customClassName, styles$1.dropDownItem, _defineProperty({}, styles$1.disabledItem, disabled));
-      var iconClassName = classnames(styles$1.iconStyle, customIconClass);
-      var iconClass = classnames(styles$1.iconStyle, customIconClassName);
+      var listClass = classnames(customListClassName, _defineProperty$1({}, styles$2.disabledItem, disabled));
+      var linkClass = classnames(customClassName, styles$2.dropDownItem, _defineProperty$1({}, styles$2.disabledItem, disabled));
+      var iconClassName = classnames(styles$2.iconStyle, customIconClass);
+      var iconClass = classnames(styles$2.iconStyle, customIconClassName);
       var eventHandlers = {
         onClick: this.handleClick,
         onKeyDown: this.handleKeyDown
       };
-      return /*#__PURE__*/React.createElement("li", _extends({}, other, {
+      return /*#__PURE__*/React.createElement("li", _extends$2({}, other, {
         className: listClass
       }, eventHandlers), /*#__PURE__*/React.createElement("a", {
         href: link,
         className: linkClass,
         target: linkTarget
-      }, icon ? /*#__PURE__*/React.createElement(_icon, {
+      }, icon ? /*#__PURE__*/React.createElement(Icon, {
         name: icon,
         className: iconClassName,
         style: iconStyle
@@ -23500,18 +23446,18 @@ var Input = /*#__PURE__*/function (_Component) {
     return _super.apply(this, arguments);
   }
 
-  _createClass(Input, [{
+  _createClass$1(Input, [{
     key: "render",
     value: function render() {
       var _this$props = this.props,
           type = _this$props.type,
-          className = _this$props.className,
-          value = _this$props.value,
-          placeHolder = _this$props.placeHolder,
+          className = _this$props.className;
+          _this$props.value;
+          var placeHolder = _this$props.placeHolder,
           size = _this$props.size,
-          width = _this$props.width,
-          rows = _this$props.rows,
-          multiline = _this$props.multiline,
+          width = _this$props.width;
+          _this$props.rows;
+          var multiline = _this$props.multiline,
           other = _objectWithoutProperties(_this$props, ["type", "className", "value", "placeHolder", "size", "width", "rows", "multiline"]);
 
       var inputClass = classnames(className, {
@@ -23526,11 +23472,11 @@ var Input = /*#__PURE__*/function (_Component) {
       });
       return /*#__PURE__*/React.createElement("div", {
         className: "uk-margin"
-      }, !multiline && /*#__PURE__*/React.createElement("input", _extends({
+      }, !multiline && /*#__PURE__*/React.createElement("input", _extends$2({
         className: inputClass,
         type: type,
         placeholder: placeHolder
-      }, other)), multiline && /*#__PURE__*/React.createElement("textarea", _extends({
+      }, other)), multiline && /*#__PURE__*/React.createElement("textarea", _extends$2({
         className: inputClass,
         placeholder: placeHolder
       }, other)));
@@ -23560,764 +23506,6 @@ Input.defaultProps = {
   rows: 4
 };
 var _Input = Input;
-
-var RadioGroupContext = /*#__PURE__*/createContext();
-
-function useRadioGroup() {
-  return useContext$1(RadioGroupContext);
-}
-
-/**
- * Safe chained function
- *
- * Will only create a new function if needed,
- * otherwise will pass back existing functions or null.
- * @param {function} functions to chain
- * @returns {function|null}
- */
-function createChainedFunction() {
-  for (var _len = arguments.length, funcs = new Array(_len), _key = 0; _key < _len; _key++) {
-    funcs[_key] = arguments[_key];
-  }
-
-  return funcs.reduce(function (acc, func) {
-    if (func == null) {
-      return acc;
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      if (typeof func !== 'function') {
-        console.error('Invalid Argument Type, must only provide functions, undefined, or null.');
-      }
-    }
-
-    return function chainedFunction() {
-      for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-        args[_key2] = arguments[_key2];
-      }
-
-      acc.apply(this, args);
-      func.apply(this, args);
-    };
-  }, function () {});
-}
-
-var Radio = /*#__PURE__*/forwardRef$2(function Radio(props, ref) {
-  var checkedProp = props.checked,
-      nameProp = props.name,
-      onChangeProp = props.onChange,
-      other = _objectWithoutProperties(props, ["checked", "name", "onChange"]);
-
-  var radioGroup = useRadioGroup();
-  var checked = checkedProp;
-  var onChange = createChainedFunction(onChangeProp, radioGroup && radioGroup.onChange);
-  var name = nameProp;
-
-  if (radioGroup) {
-    if (typeof checked === "undefined") {
-      checked = radioGroup.value === props.value;
-    }
-
-    if (typeof name === "undefined") {
-      name = radioGroup.name;
-    }
-  }
-
-  return /*#__PURE__*/createElement("input", _extends({
-    type: "radio",
-    name: name,
-    checked: checked,
-    onChange: onChange,
-    ref: ref,
-    className: classnames(props.className, "uk-radio")
-  }, other));
-});
-Radio.propTypes = {
-  /**
-   * If `true`, the component is checked.
-   */
-  checked: propTypes.bool,
-
-  /**
-   * If `true`, the radio will be disabled.
-   */
-  disabled: propTypes.bool,
-
-  /**
-   * Name attribute of the `input` element.
-   */
-  name: propTypes.string,
-
-  /**
-   * Callback fired when the state is changed.
-   *
-   * @param {object} event The event source of the callback.
-   * You can pull out the new value by accessing `event.target.value` (string).
-   * You can pull out the new checked state by accessing `event.target.checked` (boolean).
-   */
-  onChange: propTypes.func,
-
-  /**
-   * If `true`, the `input` element will be required.
-   */
-  required: propTypes.bool,
-
-  /**
-   * The value of the component. The DOM API casts this to a string.
-   */
-  value: propTypes.any
-};
-var _Radio = Radio;
-
-function useControlled(_ref) {
-  var controlled = _ref.controlled,
-      defaultProp = _ref["default"],
-      name = _ref.name,
-      _ref$state = _ref.state,
-      state = _ref$state === void 0 ? 'value' : _ref$state;
-
-  // isControlled is ignored in the hook dependency lists as it should never change.
-  var _React$useRef = useRef(controlled !== undefined),
-      isControlled = _React$useRef.current;
-
-  var _React$useState = useState(defaultProp),
-      _React$useState2 = _slicedToArray(_React$useState, 2),
-      valueState = _React$useState2[0],
-      setValue = _React$useState2[1];
-
-  var value = isControlled ? controlled : valueState;
-
-  if (process.env.NODE_ENV !== 'production') {
-    useEffect(function () {
-      if (isControlled !== (controlled !== undefined)) {
-        console.error(["A component is changing the ".concat(isControlled ? '' : 'un', "controlled ").concat(state, " state of ").concat(name, " to be ").concat(isControlled ? 'un' : '', "controlled."), 'Elements should not switch from uncontrolled to controlled (or vice versa).', "Decide between using a controlled or uncontrolled ".concat(name, " ") + 'element for the lifetime of the component.', "The nature of the state is determined during the first render, it's considered controlled if the value is not `undefined`.", 'More info: https://fb.me/react-controlled-components'].join('\n'));
-      }
-    }, [state, name, controlled]);
-
-    var _React$useRef2 = useRef(defaultProp),
-        defaultValue = _React$useRef2.current;
-
-    useEffect(function () {
-      if (!isControlled && defaultValue !== defaultProp) {
-        console.error(["A component is changing the default ".concat(state, " state of an uncontrolled ").concat(name, " after being initialized. ") + "To suppress this warning opt to use a controlled ".concat(name, ".")].join('\n'));
-      }
-    }, [JSON.stringify(defaultProp)]);
-  }
-
-  var setValueIfUncontrolled = useCallback(function (newValue) {
-    if (!isControlled) {
-      setValue(newValue);
-    }
-  }, []);
-  return [value, setValueIfUncontrolled];
-}
-
-function useId(idOverride) {
-  var _React$useState = useState(idOverride),
-      _React$useState2 = _slicedToArray(_React$useState, 2),
-      defaultId = _React$useState2[0],
-      setDefaultId = _React$useState2[1];
-
-  var id = idOverride || defaultId;
-  useEffect(function () {
-    if (defaultId == null) {
-      // Fallback to this default id when possible.
-      // Use the random value for client-side rendering only.
-      // We can't use it server-side.
-      setDefaultId("ou-".concat(Math.round(Math.random() * 1e5)));
-    }
-  }, [defaultId]);
-  return id;
-}
-
-var RadioGroup = /*#__PURE__*/forwardRef$2(function RadioGroup(props, ref) {
-  var actions = props.actions,
-      children = props.children,
-      nameProp = props.name,
-      valueProp = props.value,
-      onChange = props.onChange,
-      other = _objectWithoutProperties(props, ["actions", "children", "name", "value", "onChange"]);
-
-  var rootRef = useRef(null);
-
-  var _useControlled = useControlled({
-    controlled: valueProp,
-    "default": props.defaultValue,
-    name: "RadioGroup"
-  }),
-      _useControlled2 = _slicedToArray(_useControlled, 2),
-      value = _useControlled2[0],
-      setValueState = _useControlled2[1];
-
-  useImperativeHandle(actions, function () {
-    return {
-      focus: function focus() {
-        var input = rootRef.current.querySelector("input:not(:disabled):checked");
-
-        if (!input) {
-          input = rootRef.current.querySelector("input:not(:disabled)");
-        }
-
-        if (input) {
-          input.focus();
-        }
-      }
-    };
-  }, []);
-
-  var handleChange = function handleChange(event) {
-    setValueState(event.target.value);
-
-    if (onChange) {
-      onChange(event, event.target.value);
-    }
-  };
-
-  var name = useId(nameProp);
-  return /*#__PURE__*/createElement(RadioGroupContext.Provider, {
-    value: {
-      name: name,
-      onChange: handleChange,
-      value: value
-    }
-  }, /*#__PURE__*/createElement("div", _extends({
-    className: "uk-margin uk-grid-small uk-child-width-auto uk-grid"
-  }, other), children));
-});
-RadioGroup.propTypes = {
-  // ----------------------------- Warning --------------------------------
-  // | These PropTypes are generated from the TypeScript type definitions |
-  // |     To update them edit the d.ts file and run "yarn proptypes"     |
-  // ----------------------------------------------------------------------
-
-  /**
-   * The content of the component.
-   */
-  children: propTypes.node,
-
-  /**
-   * The default `input` element value. Use when the component is not controlled.
-   */
-  defaultValue: propTypes.oneOfType([propTypes.arrayOf(propTypes.string), propTypes.number, propTypes.string]),
-
-  /**
-   * The name used to reference the value of the control.
-   * If you don't provide this prop, it falls back to a randomly generated name.
-   */
-  name: propTypes.string,
-
-  /**
-   * Callback fired when a radio button is selected.
-   *
-   * @param {object} event The event source of the callback.
-   * You can pull out the new value by accessing `event.target.value` (string).
-   */
-  onChange: propTypes.func,
-
-  /**
-   * Value of the selected radio button. The DOM API casts this to a string.
-   */
-  value: propTypes.any
-};
-var _RadioGroup = RadioGroup;
-
-var SelectOption = function SelectOption(_ref) {
-  var children = _ref.children,
-      selected = _ref.selected,
-      _ref$group = _ref.group,
-      group = _ref$group === void 0 ? false : _ref$group,
-      label = _ref.label,
-      value = _ref.value;
-  return /*#__PURE__*/React.createElement(React.Fragment, null, !group && /*#__PURE__*/React.createElement("option", {
-    value: value,
-    selected: selected
-  }, " ", children), group && /*#__PURE__*/React.createElement("optgroup", {
-    label: label
-  }, " ", children));
-};
-
-var _SelectOption = SelectOption;
-
-var css_248z$3 = ".select-module_selectStyle__2U-Cg{cursor:pointer;width:100%;max-width:100%;padding:10px;border:1px solid #e5e5e5;-webkit-transition:.2s ease-in-out;transition:.2s ease-in-out;-webkit-transition-property:color,background-color,border;transition-property:color,background-color,border;position:absolute;display:inline-block;background-color:inherit}.select-module_selectStyleDisabled__22zSI{cursor:not-allowed;background-color:#faf8f5}.select-module_selectWrapper__2qJjt{padding:15px;z-index:1}.select-module_selectWrapper__2qJjt:hover{cursor:pointer!important}.select-module_helperText__2Z80R{display:block;margin-bottom:10px;margin-top:30px;margin-left:15px;color:#f9c7d0;position:absolute}.select-module_helperTextError__25OM3{color:#f44336}.select-module_options__348zS{position:absolute;left:0;right:0;background:#fff;border:1px solid #ccc;padding-left:0;z-index:1000}.select-module_placeholder__2RasG{color:#898989}.select-module_optionWrapper__2guJV{padding:5px;background:inherit;cursor:inherit}.select-module_optionWrapperGroup__3_-_e{background:#faf8f5;cursor:auto}.select-module_optionWrapper__2guJV:hover{background:#5a81f1;color:#fff;cursor:pointer}.select-module_optionWrapper__2guJV:hover .select-module_group__2npyo{background:inherit;color:inherit}.select-module_selectedValue__3BiVt{padding:5px;border:1px solid #5a81f1;margin-left:5px;background:#faf8f5;min-width:-webkit-fit-content;min-width:-moz-fit-content;min-width:fit-content}.select-module_deleteValue__3EkqM,.select-module_selectedValueGroup__bst7y{cursor:pointer}.select-module_chevronWrapper__2HvWY{float:right}.select-module_filterWrapper__3i2O7{display:-ms-flexbox;display:-webkit-box;display:flex;width:100%;text-align:center;cursor:pointer}.select-module_filterInput__2P7Pc{-webkit-box-sizing:border-box;box-sizing:border-box;width:100%;height:auto;font-family:Montserrat,sans-serif;border:0;outline:none}.select-module_optionStyle__3ivtW{position:relative;list-style:none;cursor:pointer}.select-module_optionStyle__3ivtW ul{display:block}.select-module_optionGroupStyle__3K6DT ul{display:contents}";
-var styles$2 = {"selectStyle":"select-module_selectStyle__2U-Cg","selectStyleDisabled":"select-module_selectStyleDisabled__22zSI","selectWrapper":"select-module_selectWrapper__2qJjt","helperText":"select-module_helperText__2Z80R","helperTextError":"select-module_helperTextError__25OM3","options":"select-module_options__348zS","placeholder":"select-module_placeholder__2RasG","optionWrapper":"select-module_optionWrapper__2guJV","optionWrapperGroup":"select-module_optionWrapperGroup__3_-_e","group":"select-module_group__2npyo","selectedValue":"select-module_selectedValue__3BiVt","deleteValue":"select-module_deleteValue__3EkqM","selectedValueGroup":"select-module_selectedValueGroup__bst7y","chevronWrapper":"select-module_chevronWrapper__2HvWY","filterWrapper":"select-module_filterWrapper__3i2O7","filterInput":"select-module_filterInput__2P7Pc","optionStyle":"select-module_optionStyle__3ivtW","optionGroupStyle":"select-module_optionGroupStyle__3K6DT"};
-styleInject(css_248z$3);
-
-var SelectWrapper = function SelectWrapper(_ref) {
-  var className = _ref.className,
-      children = _ref.children,
-      props = _objectWithoutProperties(_ref, ["className", "children"]);
-
-  return /*#__PURE__*/React.createElement("div", _extends({
-    className: classnames(className, styles$2.selectWrapper)
-  }, props), children);
-};
-
-var HelperText = function HelperText(_ref2) {
-  var error = _ref2.error,
-      children = _ref2.children,
-      props = _objectWithoutProperties(_ref2, ["error", "children"]);
-
-  return /*#__PURE__*/React.createElement("div", _extends({
-    className: classnames(styles$2.helperText, _defineProperty({}, styles$2.helperTextError, error))
-  }, props), children);
-};
-
-var Placeholder = function Placeholder(_ref3) {
-  var children = _ref3.children,
-      props = _objectWithoutProperties(_ref3, ["children"]);
-
-  return /*#__PURE__*/React.createElement("div", _extends({
-    className: styles$2.placeholder
-  }, props), children);
-};
-
-var OptionWrapper = function OptionWrapper(_ref4) {
-  var children = _ref4.children,
-      className = _ref4.className,
-      group = _ref4.group,
-      props = _objectWithoutProperties(_ref4, ["children", "className", "group"]);
-
-  return /*#__PURE__*/React.createElement("div", _extends({
-    className: classnames(styles$2.optionWrapper, _defineProperty({}, styles$2.optionWrapperGroup, group))
-  }, props), children);
-};
-
-var SelectedValue = function SelectedValue(_ref5) {
-  var children = _ref5.children,
-      group = _ref5.group,
-      props = _objectWithoutProperties(_ref5, ["children", "group"]);
-
-  return /*#__PURE__*/React.createElement("span", _extends({
-    className: classnames(styles$2.selectedValue, _defineProperty({}, styles$2.selectedValueGroup, group))
-  }, props), children);
-};
-
-var DeleteValue = function DeleteValue(_ref6) {
-  var children = _ref6.children,
-      props = _objectWithoutProperties(_ref6, ["children"]);
-
-  return /*#__PURE__*/React.createElement("span", _extends({
-    className: styles$2.deleteValue
-  }, props), children);
-};
-
-var ChevronWrapper = function ChevronWrapper(_ref7) {
-  var children = _ref7.children,
-      props = _objectWithoutProperties(_ref7, ["children"]);
-
-  return /*#__PURE__*/React.createElement("div", _extends({
-    className: styles$2.chevronWrapper
-  }, props), children);
-};
-
-var FilterWrapper = function FilterWrapper(_ref8) {
-  var children = _ref8.children,
-      props = _objectWithoutProperties(_ref8, ["children"]);
-
-  return /*#__PURE__*/React.createElement("div", _extends({
-    className: styles$2.filterWrapper
-  }, props), children);
-};
-
-var Option = function Option(_ref9) {
-  var children = _ref9.children,
-      className = _ref9.className,
-      group = _ref9.group,
-      props = _objectWithoutProperties(_ref9, ["children", "className", "group"]);
-
-  return /*#__PURE__*/React.createElement("li", _extends({
-    className: classnames(className, styles$2.optionStyle, _defineProperty({}, styles$2.optionGroupStyle, group))
-  }, props), children);
-};
-
-Option.propTypes = {
-  group: propTypes.bool
-};
-Option.defaultProps = {
-  group: false
-};
-
-var Select = /*#__PURE__*/function (_Component) {
-  _inherits(Select, _Component);
-
-  var _super = _createSuper(Select);
-
-  function Select(props) {
-    var _this;
-
-    _classCallCheck(this, Select);
-
-    _this = _super.call(this, props);
-
-    _this.handleDeleteValue = function (value) {
-      return function (e) {
-        e.stopPropagation();
-
-        _this.setState(function (prevState) {
-          var _prevState$values = _toArray(prevState.values),
-              values = _prevState$values.slice(0);
-
-          var index = values.indexOf(value);
-          values.splice(index, 1);
-          return {
-            values: values
-          };
-        });
-      };
-    };
-
-    _this.state = {
-      values: [],
-      //keeps selected values,
-      selectedOptions: [],
-      showFilter: false,
-      filteredOptions: [],
-      showOptions: false // manages options hide and show (chevron up-down,outside click)
-
-    };
-    _this.handleOnChange = _this.handleOnChange.bind(_assertThisInitialized(_this));
-    _this.toogleOptions = _this.toogleOptions.bind(_assertThisInitialized(_this));
-    _this.handleSelect = _this.handleSelect.bind(_assertThisInitialized(_this));
-    _this.closeOptions = _this.closeOptions.bind(_assertThisInitialized(_this));
-    _this.handleDeleteValue = _this.handleDeleteValue.bind(_assertThisInitialized(_this));
-    _this.handleFilterChange = _this.handleFilterChange.bind(_assertThisInitialized(_this));
-    _this.multiRef = /*#__PURE__*/React.createRef();
-    _this.filterRef = /*#__PURE__*/React.createRef();
-    return _this;
-  }
-
-  _createClass(Select, [{
-    key: "componentDidMount",
-    value: function componentDidMount() {
-      document.addEventListener("click", this.closeOptions);
-    }
-  }, {
-    key: "componentWillUnmount",
-    value: function componentWillUnmount() {
-      document.removeEventListener("click", this.closeOptions);
-    }
-    /**
-     * close option when outside click
-     * @param {e} e
-     */
-
-  }, {
-    key: "closeOptions",
-    value: function closeOptions(e) {
-      if (this.multiRef.current) {
-        if (!this.multiRef.current.contains(e.target)) {
-          this.setState({
-            showOptions: false
-          });
-        }
-      }
-    }
-    /**
-     *
-     * push selected values to values state
-     * @param {e} e
-     */
-
-  }, {
-    key: "handleSelect",
-    value: function handleSelect(e) {
-      e.stopPropagation();
-      var value = e.currentTarget.getAttribute("data-value");
-      var text = e.currentTarget.dataset.value;
-      var multiple = this.props.multiple; //clear filtered options
-
-      this.setState({
-        filteredOptions: []
-      });
-      this.setState(function (prevState) {
-        if (!multiple) {
-          return {
-            values: [value],
-            showOptions: false,
-            showFilter: false
-          };
-        }
-
-        var _prevState$values2 = _toArray(prevState.values),
-            values = _prevState$values2.slice(0);
-
-        var index = values.indexOf(text);
-
-        if (index === -1) {
-          values.push(value);
-        } else {
-          values.splice(index, 1);
-        }
-
-        return {
-          values: values
-        };
-      });
-    }
-    /**
-     * renders options by giving options values
-     * @param {} options
-     */
-
-  }, {
-    key: "renderOptions",
-    value: function renderOptions() {
-      var _this2 = this;
-
-      var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
-      var multiple = this.props.multiple;
-      var values = this.state.values;
-      return /*#__PURE__*/React.createElement("ul", {
-        className: styles$2.options
-      }, options.map(function (option, index) {
-        return /*#__PURE__*/React.createElement(Option, {
-          key: index,
-          onClick: !option.hasOwnProperty("group") ? _this2.handleSelect : null,
-          "data-value": option.value,
-          group: option.hasOwnProperty("group")
-        }, multiple && /*#__PURE__*/React.createElement(OptionWrapper, {
-          group: option.hasOwnProperty("group")
-        }, option.text, " ", values.includes(option.value) && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(_icon, {
-          name: "check"
-        }))), !multiple && /*#__PURE__*/React.createElement(OptionWrapper, {
-          group: option.hasOwnProperty("group")
-        }, option.text), option.hasOwnProperty("group") && _this2.renderOptions(option.group));
-      }));
-    } //sends values to onChange event
-
-  }, {
-    key: "handleOnChange",
-    value: function handleOnChange(values) {
-      if (this.state.showFilter) {
-        this.handleFilterChange();
-      }
-
-      var onChange = this.props.onChange;
-
-      if (typeof onChange === "function" && values.nativeEvent === undefined) {
-        // just send values not event
-        if (onChange(values) === false) return;
-      }
-    } //handle multiple delete value
-
-  }, {
-    key: "getSelectedOptions",
-    value: function getSelectedOptions() {
-      var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
-      var values = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
-      var selectedOptions = [];
-      options.forEach(function (option) {
-        if (option.hasOwnProperty("group")) {
-          option.group.forEach(function (opt) {
-            if (values.includes(opt.value)) {
-              selectedOptions.push(opt);
-            }
-          });
-        } else {
-          if (values.includes(option.value)) {
-            selectedOptions.push(option);
-          }
-        }
-      });
-      return selectedOptions;
-    }
-    /**
-     * Render selected values
-     */
-
-  }, {
-    key: "renderValues",
-    value: function renderValues() {
-      var _this3 = this;
-
-      var _this$state = this.state,
-          values = _this$state.values,
-          showFilter = _this$state.showFilter;
-      var _this$props = this.props,
-          multiple = _this$props.multiple,
-          options = _this$props.options;
-      var selectedOptions = this.getSelectedOptions(options, values);
-
-      if (values.length) {
-        if (multiple) {
-          return selectedOptions.map(function (option, index) {
-            return /*#__PURE__*/React.createElement(SelectedValue, {
-              key: index,
-              group: option.hasOwnProperty("group")
-            }, " ", option.text, " ", /*#__PURE__*/React.createElement(DeleteValue, {
-              onClick: _this3.handleDeleteValue(option.value)
-            }, /*#__PURE__*/React.createElement(_icon, {
-              name: "minus-circle",
-              fontawesome: true,
-              solid: true
-            })));
-          });
-        }
-
-        return !showFilter && /*#__PURE__*/React.createElement("span", null, " ", selectedOptions[0]["text"], " ");
-      }
-    }
-  }, {
-    key: "renderPlaceHolder",
-    value: function renderPlaceHolder() {
-      var _this4 = this;
-
-      var _this$state2 = this.state,
-          values = _this$state2.values,
-          showOptions = _this$state2.showOptions,
-          showFilter = _this$state2.showFilter;
-      var _this$props2 = this.props,
-          placeholder = _this$props2.placeholder,
-          filterable = _this$props2.filterable;
-      return /*#__PURE__*/React.createElement(Placeholder, null, values.length === 0 ? placeholder : "", /*#__PURE__*/React.createElement(ChevronWrapper, null, !showFilter && filterable && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(_icon, {
-        onClick: function onClick() {
-          _this4.setState({
-            showFilter: !_this4.state.showFilter
-          });
-        },
-        name: "close",
-        size: 0.8,
-        fontawesome: true,
-        solid: true
-      })), /*#__PURE__*/React.createElement(_icon, {
-        name: showOptions ? "chevron-up" : "chevron-down",
-        fontawesome: true,
-        solid: true
-      })));
-    }
-  }, {
-    key: "toogleOptions",
-    value: function toogleOptions() {
-      var showOptions = this.state.showOptions;
-      this.setState({
-        showOptions: !showOptions
-      });
-    }
-  }, {
-    key: "getSnapshotBeforeUpdate",
-    value: function getSnapshotBeforeUpdate(prevProps, prevState) {
-      if (prevProps.multiple && prevState.values.length !== this.state.values.length) {
-        return this.state.values;
-      }
-
-      if (!prevProps.multiple && prevState.values !== this.state.values) {
-        return this.state.values[0];
-      }
-
-      return null;
-    }
-  }, {
-    key: "componentDidUpdate",
-    value: function componentDidUpdate(prevProps, prevState, snapshot) {
-      if (snapshot !== null) {
-        this.handleOnChange(snapshot);
-      }
-    }
-  }, {
-    key: "handleFilterChange",
-    value: function handleFilterChange() {
-      var _this5 = this;
-
-      var list = [];
-
-      if (this.filterRef.current) {
-        this.props.options.forEach(function (option) {
-          if (option.hasOwnProperty("group")) {
-            var opt = option.group.filter(function (d) {
-              return d.text.toLowerCase().indexOf(_this5.filterRef.current.value.toLowerCase()) > -1;
-            });
-
-            if (opt.length) {
-              var newOpt = {
-                text: option.text,
-                group: opt
-              };
-              list.push(newOpt);
-            }
-          } else {
-            if (option.text.toLowerCase().indexOf(_this5.filterRef.current.value.toLowerCase()) > -1) {
-              list.push(option);
-            }
-          }
-        });
-
-        if (list.length === 0) {
-          list.push({
-            value: null,
-            text: "No records found!"
-          });
-        }
-
-        this.setState({
-          filteredOptions: list,
-          showOptions: true,
-          filterVal: this.filterRef.current.value
-        });
-      }
-    }
-  }, {
-    key: "render",
-    value: function render() {
-      var _this$props3 = this.props,
-          children = _this$props3.children,
-          filterable = _this$props3.filterable,
-          className = _this$props3.className,
-          helperText = _this$props3.helperText,
-          disabled = _this$props3.disabled,
-          error = _this$props3.error,
-          value = _this$props3.value,
-          multiple = _this$props3.multiple,
-          placeholder = _this$props3.placeholder,
-          options = _this$props3.options,
-          onChange = _this$props3.onChange,
-          other = _objectWithoutProperties(_this$props3, ["children", "filterable", "className", "helperText", "disabled", "error", "value", "multiple", "placeholder", "options", "onChange"]);
-
-      var _this$state3 = this.state,
-          showOptions = _this$state3.showOptions,
-          showFilter = _this$state3.showFilter,
-          filteredOptions = _this$state3.filteredOptions;
-      return /*#__PURE__*/React.createElement("div", {
-        className: classnames("uk-margin", styles$2.selectStyle, _defineProperty({}, styles$2.selectStyleDisabled, disabled)),
-        style: {
-          width: "100%",
-          maxWidth: "100%"
-        }
-      }, /*#__PURE__*/React.createElement(SelectWrapper, null, /*#__PURE__*/React.createElement("div", _extends({
-        className: className,
-        onClick: this.toogleOptions,
-        ref: this.multiRef,
-        onChange: this.handleOnChange
-      }, other), !showFilter && this.renderPlaceHolder(), showFilter && /*#__PURE__*/React.createElement(FilterWrapper, null, multiple ? !disabled && this.renderValues() : "", /*#__PURE__*/React.createElement("input", {
-        type: "text",
-        ref: this.filterRef,
-        placeholder: placeholder,
-        className: classnames("uk-input", styles$2.filterInput)
-      })), !showFilter && !disabled && this.renderValues(), showOptions && !disabled && this.renderOptions(filteredOptions.length ? filteredOptions : options))), helperText && /*#__PURE__*/React.createElement(HelperText, {
-        error: error
-      }, helperText));
-    }
-  }]);
-
-  return Select;
-}(Component);
-
-Select.propTypes = {
-  error: propTypes.bool,
-  disabled: propTypes.bool,
-  multiple: propTypes.bool,
-  helperText: propTypes.string,
-  onChange: propTypes.func,
-  placeholder: propTypes.string,
-  options: propTypes.array
-};
-Select.defaultProps = {
-  disabled: false,
-  error: false,
-  helperText: "",
-  multiple: false
-};
-Select.Option = _SelectOption;
-var _Select = Select;
 
 function isAbsolute(pathname) {
   return pathname.charAt(0) === '/';
@@ -24393,54 +23581,19 @@ function resolvePathname(to, from) {
   return result;
 }
 
-function valueOf(obj) {
-  return obj.valueOf ? obj.valueOf() : Object.prototype.valueOf.call(obj);
-}
-
-function valueEqual(a, b) {
-  // Test for strict equality first.
-  if (a === b) return true;
-
-  // Otherwise, if either of them == null they are not equal.
-  if (a == null || b == null) return false;
-
-  if (Array.isArray(a)) {
-    return (
-      Array.isArray(b) &&
-      a.length === b.length &&
-      a.every(function(item, index) {
-        return valueEqual(item, b[index]);
-      })
-    );
-  }
-
-  if (typeof a === 'object' || typeof b === 'object') {
-    var aValue = valueOf(a);
-    var bValue = valueOf(b);
-
-    if (aValue !== a || bValue !== b) return valueEqual(aValue, bValue);
-
-    return Object.keys(Object.assign({}, a, b)).every(function(key) {
-      return valueEqual(a[key], b[key]);
-    });
-  }
-
-  return false;
-}
-
-var isProduction$1 = process.env.NODE_ENV === 'production';
-var prefix$1 = 'Invariant failed';
+var isProduction = process.env.NODE_ENV === 'production';
+var prefix = 'Invariant failed';
 function invariant(condition, message) {
     if (condition) {
         return;
     }
-    if (isProduction$1) {
-        throw new Error(prefix$1);
+    if (isProduction) {
+        throw new Error(prefix);
     }
-    throw new Error(prefix$1 + ": " + (message || ''));
+    throw new Error(prefix + ": " + (message || ''));
 }
 
-function addLeadingSlash(path) {
+function addLeadingSlash$1(path) {
   return path.charAt(0) === '/' ? path : '/' + path;
 }
 function stripLeadingSlash(path) {
@@ -24449,7 +23602,7 @@ function stripLeadingSlash(path) {
 function hasBasename(path, prefix) {
   return path.toLowerCase().indexOf(prefix.toLowerCase()) === 0 && '/?#'.indexOf(path.charAt(prefix.length)) !== -1;
 }
-function stripBasename(path, prefix) {
+function stripBasename$1(path, prefix) {
   return hasBasename(path, prefix) ? path.substr(prefix.length) : path;
 }
 function stripTrailingSlash(path) {
@@ -24543,9 +23696,6 @@ function createLocation(path, state, key, currentLocation) {
   }
 
   return location;
-}
-function locationsAreEqual(a, b) {
-  return a.pathname === b.pathname && a.search === b.search && a.hash === b.hash && a.key === b.key && valueEqual(a.state, b.state);
 }
 
 function createTransitionManager() {
@@ -24694,7 +23844,7 @@ function createBrowserHistory(props) {
       getUserConfirmation = _props$getUserConfirm === void 0 ? getConfirmation : _props$getUserConfirm,
       _props$keyLength = _props.keyLength,
       keyLength = _props$keyLength === void 0 ? 6 : _props$keyLength;
-  var basename = props.basename ? stripTrailingSlash(addLeadingSlash(props.basename)) : '';
+  var basename = props.basename ? stripTrailingSlash(addLeadingSlash$1(props.basename)) : '';
 
   function getDOMLocation(historyState) {
     var _ref = historyState || {},
@@ -24707,7 +23857,7 @@ function createBrowserHistory(props) {
         hash = _window$location.hash;
     var path = pathname + search + hash;
     process.env.NODE_ENV !== "production" ? warning(!basename || hasBasename(path, basename), 'You are attempting to use a basename on a page whose URL path does not begin ' + 'with the basename. Expected path "' + path + '" to begin with "' + basename + '".') : void 0;
-    if (basename) path = stripBasename(path, basename);
+    if (basename) path = stripBasename$1(path, basename);
     return createLocation(path, state, key);
   }
 
@@ -24934,11 +24084,11 @@ var HashPathCoders = {
   },
   noslash: {
     encodePath: stripLeadingSlash,
-    decodePath: addLeadingSlash
+    decodePath: addLeadingSlash$1
   },
   slash: {
-    encodePath: addLeadingSlash,
-    decodePath: addLeadingSlash
+    encodePath: addLeadingSlash$1,
+    decodePath: addLeadingSlash$1
   }
 };
 
@@ -24976,7 +24126,7 @@ function createHashHistory(props) {
       getUserConfirmation = _props$getUserConfirm === void 0 ? getConfirmation : _props$getUserConfirm,
       _props$hashType = _props.hashType,
       hashType = _props$hashType === void 0 ? 'slash' : _props$hashType;
-  var basename = props.basename ? stripTrailingSlash(addLeadingSlash(props.basename)) : '';
+  var basename = props.basename ? stripTrailingSlash(addLeadingSlash$1(props.basename)) : '';
   var _HashPathCoders$hashT = HashPathCoders[hashType],
       encodePath = _HashPathCoders$hashT.encodePath,
       decodePath = _HashPathCoders$hashT.decodePath;
@@ -24984,7 +24134,7 @@ function createHashHistory(props) {
   function getDOMLocation() {
     var path = decodePath(getHashPath());
     process.env.NODE_ENV !== "production" ? warning(!basename || hasBasename(path, basename), 'You are attempting to use a basename on a page whose URL path does not begin ' + 'with the basename. Expected path "' + path + '" to begin with "' + basename + '".') : void 0;
-    if (basename) path = stripBasename(path, basename);
+    if (basename) path = stripBasename$1(path, basename);
     return createLocation(path);
   }
 
@@ -25353,11 +24503,11 @@ function createMemoryHistory(props) {
 }
 
 var MAX_SIGNED_31_BIT_INT = 1073741823;
-var commonjsGlobal$1 = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : {};
+var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : {};
 
 function getUniqueId() {
   var key = '__global_unique_id__';
-  return commonjsGlobal$1[key] = (commonjsGlobal$1[key] || 0) + 1;
+  return commonjsGlobal[key] = (commonjsGlobal[key] || 0) + 1;
 }
 
 function objectIs(x, y) {
@@ -25401,7 +24551,7 @@ function createReactContext(defaultValue, calculateChangedBits) {
   var contextProp = '__create-react-context-' + getUniqueId() + '__';
 
   var Provider = /*#__PURE__*/function (_Component) {
-    _inheritsLoose(Provider, _Component);
+    _inheritsLoose$1(Provider, _Component);
 
     function Provider() {
       var _this;
@@ -25453,7 +24603,7 @@ function createReactContext(defaultValue, calculateChangedBits) {
   Provider.childContextTypes = (_Provider$childContex = {}, _Provider$childContex[contextProp] = propTypes.object.isRequired, _Provider$childContex);
 
   var Consumer = /*#__PURE__*/function (_Component2) {
-    _inheritsLoose(Consumer, _Component2);
+    _inheritsLoose$1(Consumer, _Component2);
 
     function Consumer() {
       var _this2;
@@ -25520,7 +24670,7 @@ function createReactContext(defaultValue, calculateChangedBits) {
   };
 }
 
-var index$2 = React.createContext || createReactContext;
+var index = React.createContext || createReactContext;
 
 var isarray = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
@@ -25530,7 +24680,7 @@ var isarray = Array.isArray || function (arr) {
  * Expose `pathToRegexp`.
  */
 var pathToRegexp_1 = pathToRegexp;
-var parse_1 = parse$1;
+var parse_1 = parse;
 var compile_1 = compile;
 var tokensToFunction_1 = tokensToFunction;
 var tokensToRegExp_1 = tokensToRegExp;
@@ -25560,7 +24710,7 @@ var PATH_REGEXP = new RegExp([
  * @param  {Object=} options
  * @return {!Array}
  */
-function parse$1 (str, options) {
+function parse (str, options) {
   var tokens = [];
   var key = 0;
   var index = 0;
@@ -25634,7 +24784,7 @@ function parse$1 (str, options) {
  * @return {!function(Object=, Object=)}
  */
 function compile (str, options) {
-  return tokensToFunction(parse$1(str, options), options)
+  return tokensToFunction(parse(str, options), options)
 }
 
 /**
@@ -25845,7 +24995,7 @@ function arrayToRegexp (path, keys, options) {
  * @return {!RegExp}
  */
 function stringToRegexp (path, keys, options) {
-  return tokensToRegExp(parse$1(path, options), keys, options)
+  return tokensToRegExp(parse(path, options), keys, options)
 }
 
 /**
@@ -25958,7 +25108,7 @@ pathToRegexp_1.tokensToRegExp = tokensToRegExp_1;
 // TODO: Replace with React.createContext once we can assume React 16+
 
 var createNamedContext = function createNamedContext(name) {
-  var context = index$2();
+  var context = index();
   context.displayName = name;
   return context;
 };
@@ -25970,7 +25120,7 @@ createNamedContext("Router-History");
 // TODO: Replace with React.createContext once we can assume React 16+
 
 var createNamedContext$1 = function createNamedContext(name) {
-  var context = index$2();
+  var context = index();
   context.displayName = name;
   return context;
 };
@@ -25986,7 +25136,7 @@ createNamedContext$1("Router");
 var Router =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(Router, _React$Component);
+  _inheritsLoose$1(Router, _React$Component);
 
   Router.computeRootMatch = function computeRootMatch(pathname) {
     return {
@@ -26079,7 +25229,7 @@ if (process.env.NODE_ENV !== "production") {
 var MemoryRouter =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(MemoryRouter, _React$Component);
+  _inheritsLoose$1(MemoryRouter, _React$Component);
 
   function MemoryRouter() {
     var _this;
@@ -26119,10 +25269,9 @@ if (process.env.NODE_ENV !== "production") {
   };
 }
 
-var Lifecycle =
 /*#__PURE__*/
-function (_React$Component) {
-  _inheritsLoose(Lifecycle, _React$Component);
+(function (_React$Component) {
+  _inheritsLoose$1(Lifecycle, _React$Component);
 
   function Lifecycle() {
     return _React$Component.apply(this, arguments) || this;
@@ -26147,137 +25296,31 @@ function (_React$Component) {
   };
 
   return Lifecycle;
-}(React.Component);
-
-/**
- * The public API for prompting the user before navigating away from a screen.
- */
-
-function Prompt(_ref) {
-  var message = _ref.message,
-      _ref$when = _ref.when,
-      when = _ref$when === void 0 ? true : _ref$when;
-  return React.createElement(context.Consumer, null, function (context) {
-    !context ? process.env.NODE_ENV !== "production" ? invariant(false, "You should not use <Prompt> outside a <Router>") : invariant(false) : void 0;
-    if (!when || context.staticContext) return null;
-    var method = context.history.block;
-    return React.createElement(Lifecycle, {
-      onMount: function onMount(self) {
-        self.release = method(message);
-      },
-      onUpdate: function onUpdate(self, prevProps) {
-        if (prevProps.message !== message) {
-          self.release();
-          self.release = method(message);
-        }
-      },
-      onUnmount: function onUnmount(self) {
-        self.release();
-      },
-      message: message
-    });
-  });
-}
+})(React.Component);
 
 if (process.env.NODE_ENV !== "production") {
   var messageType = propTypes.oneOfType([propTypes.func, propTypes.string]);
-  Prompt.propTypes = {
+  ({
     when: propTypes.bool,
     message: messageType.isRequired
-  };
-}
-
-var cache$2 = {};
-var cacheLimit = 10000;
-var cacheCount = 0;
-
-function compilePath(path) {
-  if (cache$2[path]) return cache$2[path];
-  var generator = pathToRegexp_1.compile(path);
-
-  if (cacheCount < cacheLimit) {
-    cache$2[path] = generator;
-    cacheCount++;
-  }
-
-  return generator;
-}
-/**
- * Public API for generating a URL pathname from a path and parameters.
- */
-
-
-function generatePath(path, params) {
-  if (path === void 0) {
-    path = "/";
-  }
-
-  if (params === void 0) {
-    params = {};
-  }
-
-  return path === "/" ? path : compilePath(path)(params, {
-    pretty: true
-  });
-}
-
-/**
- * The public API for navigating programmatically with a component.
- */
-
-function Redirect(_ref) {
-  var computedMatch = _ref.computedMatch,
-      to = _ref.to,
-      _ref$push = _ref.push,
-      push = _ref$push === void 0 ? false : _ref$push;
-  return React.createElement(context.Consumer, null, function (context) {
-    !context ? process.env.NODE_ENV !== "production" ? invariant(false, "You should not use <Redirect> outside a <Router>") : invariant(false) : void 0;
-    var history = context.history,
-        staticContext = context.staticContext;
-    var method = push ? history.push : history.replace;
-    var location = createLocation(computedMatch ? typeof to === "string" ? generatePath(to, computedMatch.params) : _extends$1({}, to, {
-      pathname: generatePath(to.pathname, computedMatch.params)
-    }) : to); // When rendering in a static context,
-    // set the new location immediately.
-
-    if (staticContext) {
-      method(location);
-      return null;
-    }
-
-    return React.createElement(Lifecycle, {
-      onMount: function onMount() {
-        method(location);
-      },
-      onUpdate: function onUpdate(self, prevProps) {
-        var prevLocation = createLocation(prevProps.to);
-
-        if (!locationsAreEqual(prevLocation, _extends$1({}, location, {
-          key: prevLocation.key
-        }))) {
-          method(location);
-        }
-      },
-      to: to
-    });
   });
 }
 
 if (process.env.NODE_ENV !== "production") {
-  Redirect.propTypes = {
+  ({
     push: propTypes.bool,
     from: propTypes.string,
     to: propTypes.oneOfType([propTypes.string, propTypes.object]).isRequired
-  };
+  });
 }
 
-var cache$1$2 = {};
+var cache$1 = {};
 var cacheLimit$1 = 10000;
 var cacheCount$1 = 0;
 
 function compilePath$1(path, options) {
   var cacheKey = "" + options.end + options.strict + options.sensitive;
-  var pathCache = cache$1$2[cacheKey] || (cache$1$2[cacheKey] = {});
+  var pathCache = cache$1[cacheKey] || (cache$1[cacheKey] = {});
   if (pathCache[path]) return pathCache[path];
   var keys = [];
   var regexp = pathToRegexp_1(path, keys, options);
@@ -26368,7 +25411,7 @@ function evalChildrenDev(children, props, path) {
 var Route =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(Route, _React$Component);
+  _inheritsLoose$1(Route, _React$Component);
 
   function Route() {
     return _React$Component.apply(this, arguments) || this;
@@ -26437,20 +25480,20 @@ if (process.env.NODE_ENV !== "production") {
   };
 }
 
-function addLeadingSlash$1(path) {
+function addLeadingSlash(path) {
   return path.charAt(0) === "/" ? path : "/" + path;
 }
 
 function addBasename(basename, location) {
   if (!basename) return location;
   return _extends$1({}, location, {
-    pathname: addLeadingSlash$1(basename) + location.pathname
+    pathname: addLeadingSlash(basename) + location.pathname
   });
 }
 
-function stripBasename$1(basename, location) {
+function stripBasename(basename, location) {
   if (!basename) return location;
-  var base = addLeadingSlash$1(basename);
+  var base = addLeadingSlash(basename);
   if (location.pathname.indexOf(base) !== 0) return location;
   return _extends$1({}, location, {
     pathname: location.pathname.substr(base.length)
@@ -26467,7 +25510,7 @@ function staticHandler(methodName) {
   };
 }
 
-function noop() {}
+function noop$1() {}
 /**
  * The public top-level API for a "static" <Router>, so-called because it
  * can't actually change the current location. Instead, it just records
@@ -26479,7 +25522,7 @@ function noop() {}
 var StaticRouter =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(StaticRouter, _React$Component);
+  _inheritsLoose$1(StaticRouter, _React$Component);
 
   function StaticRouter() {
     var _this;
@@ -26499,11 +25542,11 @@ function (_React$Component) {
     };
 
     _this.handleListen = function () {
-      return noop;
+      return noop$1;
     };
 
     _this.handleBlock = function () {
-      return noop;
+      return noop$1;
     };
 
     return _this;
@@ -26530,14 +25573,14 @@ function (_React$Component) {
         context = _this$props2$context === void 0 ? {} : _this$props2$context,
         _this$props2$location = _this$props2.location,
         location = _this$props2$location === void 0 ? "/" : _this$props2$location,
-        rest = _objectWithoutPropertiesLoose$1(_this$props2, ["basename", "context", "location"]);
+        rest = _objectWithoutPropertiesLoose(_this$props2, ["basename", "context", "location"]);
 
     var history = {
       createHref: function createHref(path) {
-        return addLeadingSlash$1(basename + createURL(path));
+        return addLeadingSlash(basename + createURL(path));
       },
       action: "POP",
-      location: stripBasename$1(basename, createLocation(location)),
+      location: stripBasename(basename, createLocation(location)),
       push: this.handlePush,
       replace: this.handleReplace,
       go: staticHandler(),
@@ -26574,7 +25617,7 @@ if (process.env.NODE_ENV !== "production") {
 var Switch =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(Switch, _React$Component);
+  _inheritsLoose$1(Switch, _React$Component);
 
   function Switch() {
     return _React$Component.apply(this, arguments) || this;
@@ -26624,58 +25667,27 @@ if (process.env.NODE_ENV !== "production") {
   };
 }
 
-/**
- * A public higher-order component to access the imperative API
- */
-
-function withRouter(Component) {
-  var displayName = "withRouter(" + (Component.displayName || Component.name) + ")";
-
-  var C = function C(props) {
-    var wrappedComponentRef = props.wrappedComponentRef,
-        remainingProps = _objectWithoutPropertiesLoose$1(props, ["wrappedComponentRef"]);
-
-    return React.createElement(context.Consumer, null, function (context) {
-      !context ? process.env.NODE_ENV !== "production" ? invariant(false, "You should not use <" + displayName + " /> outside a <Router>") : invariant(false) : void 0;
-      return React.createElement(Component, _extends$1({}, remainingProps, context, {
-        ref: wrappedComponentRef
-      }));
-    });
-  };
-
-  C.displayName = displayName;
-  C.WrappedComponent = Component;
-
-  if (process.env.NODE_ENV !== "production") {
-    C.propTypes = {
-      wrappedComponentRef: propTypes.oneOfType([propTypes.string, propTypes.func, propTypes.object])
-    };
-  }
-
-  return hoistNonReactStatics_cjs(C, Component);
-}
-
-var useContext = React.useContext;
+React.useContext;
 
 if (process.env.NODE_ENV !== "production") {
   if (typeof window !== "undefined") {
     var global$1 = window;
-    var key$2 = "__react_router_build__";
+    var key = "__react_router_build__";
     var buildNames = {
       cjs: "CommonJS",
       esm: "ES modules",
       umd: "UMD"
     };
 
-    if (global$1[key$2] && global$1[key$2] !== "esm") {
-      var initialBuildName = buildNames[global$1[key$2]];
+    if (global$1[key] && global$1[key] !== "esm") {
+      var initialBuildName = buildNames[global$1[key]];
       var secondaryBuildName = buildNames["esm"]; // TODO: Add link to article that explains in detail how to avoid
       // loading 2 different builds.
 
       throw new Error("You are loading the " + secondaryBuildName + " build of React Router " + ("on a page that is already running the " + initialBuildName + " ") + "build, so things won't work right.");
     }
 
-    global$1[key$2] = "esm";
+    global$1[key] = "esm";
   }
 }
 
@@ -26686,7 +25698,7 @@ if (process.env.NODE_ENV !== "production") {
 var BrowserRouter =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(BrowserRouter, _React$Component);
+  _inheritsLoose$1(BrowserRouter, _React$Component);
 
   function BrowserRouter() {
     var _this;
@@ -26733,7 +25745,7 @@ if (process.env.NODE_ENV !== "production") {
 var HashRouter =
 /*#__PURE__*/
 function (_React$Component) {
-  _inheritsLoose(HashRouter, _React$Component);
+  _inheritsLoose$1(HashRouter, _React$Component);
 
   function HashRouter() {
     var _this;
@@ -26797,7 +25809,7 @@ var LinkAnchor = forwardRef(function (_ref, forwardedRef) {
   var innerRef = _ref.innerRef,
       navigate = _ref.navigate,
       _onClick = _ref.onClick,
-      rest = _objectWithoutPropertiesLoose$1(_ref, ["innerRef", "navigate", "onClick"]);
+      rest = _objectWithoutPropertiesLoose(_ref, ["innerRef", "navigate", "onClick"]);
 
   var target = rest.target;
 
@@ -26847,7 +25859,7 @@ var Link = forwardRef(function (_ref2, forwardedRef) {
       replace = _ref2.replace,
       to = _ref2.to,
       innerRef = _ref2.innerRef,
-      rest = _objectWithoutPropertiesLoose$1(_ref2, ["component", "replace", "to", "innerRef"]);
+      rest = _objectWithoutPropertiesLoose(_ref2, ["component", "replace", "to", "innerRef"]);
 
   return React.createElement(context.Consumer, null, function (context) {
     !context ? process.env.NODE_ENV !== "production" ? invariant(false, "You should not use <Link> outside a <Router>") : invariant(false) : void 0;
@@ -26929,7 +25941,7 @@ var NavLink = forwardRef$1(function (_ref, forwardedRef) {
       styleProp = _ref.style,
       to = _ref.to,
       innerRef = _ref.innerRef,
-      rest = _objectWithoutPropertiesLoose$1(_ref, ["aria-current", "activeClassName", "activeStyle", "className", "exact", "isActive", "location", "sensitive", "strict", "style", "to", "innerRef"]);
+      rest = _objectWithoutPropertiesLoose(_ref, ["aria-current", "activeClassName", "activeStyle", "className", "exact", "isActive", "location", "sensitive", "strict", "style", "to", "innerRef"]);
 
   return React.createElement(context.Consumer, null, function (context) {
     !context ? process.env.NODE_ENV !== "production" ? invariant(false, "You should not use <NavLink> outside a <Router>") : invariant(false) : void 0;
@@ -27202,8 +26214,8 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
     _this.handleClick = function (e) {
       e.stopPropagation();
       var _this$props = _this.props,
-          onSelect = _this$props.onSelect,
-          onClick = _this$props.onClick;
+          onSelect = _this$props.onSelect;
+          _this$props.onClick;
       var _this$state = _this.state,
           isOpen = _this$state.isOpen,
           itemMode = _this$state.itemMode;
@@ -27219,8 +26231,8 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
 
     _this.handleMouseEnter = function (e) {
       var _this$props2 = _this.props,
-          onMouseEnter = _this$props2.onMouseEnter,
-          collapsible = _this$props2.collapsible;
+          onMouseEnter = _this$props2.onMouseEnter;
+          _this$props2.collapsible;
 
       if (_this.state.itemMode === "hover") {
         _this.setState({
@@ -27229,7 +26241,7 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
       }
 
       var info = {
-        item: _assertThisInitialized(_this),
+        item: _assertThisInitialized$2(_this),
         domEvent: e
       };
 
@@ -27250,7 +26262,7 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
       }
 
       var info = {
-        item: _assertThisInitialized(_this),
+        item: _assertThisInitialized$2(_this),
         domEvent: e
       };
 
@@ -27264,14 +26276,14 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
       active: false,
       itemMode: "hover"
     };
-    _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
-    _this.handleLinkClick = _this.handleLinkClick.bind(_assertThisInitialized(_this));
-    _this.handleMouseEnter = _this.handleMouseEnter.bind(_assertThisInitialized(_this));
-    _this.handleMouseLeave = _this.handleMouseLeave.bind(_assertThisInitialized(_this));
+    _this.handleClick = _this.handleClick.bind(_assertThisInitialized$2(_this));
+    _this.handleLinkClick = _this.handleLinkClick.bind(_assertThisInitialized$2(_this));
+    _this.handleMouseEnter = _this.handleMouseEnter.bind(_assertThisInitialized$2(_this));
+    _this.handleMouseLeave = _this.handleMouseLeave.bind(_assertThisInitialized$2(_this));
     return _this;
   }
 
-  _createClass(RegularMenuItem, [{
+  _createClass$1(RegularMenuItem, [{
     key: "handleLinkClick",
     value: function handleLinkClick(e) {
       var _this$props4 = this.props,
@@ -27300,23 +26312,23 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
           active = _this$props5.active,
           disabled = _this$props5.disabled,
           text = _this$props5.text,
-          customClassName = _this$props5.className,
-          textCustomClassName = _this$props5.textCustomClassName,
-          customDropdownClassName = _this$props5.customDropdownClassName,
+          customClassName = _this$props5.className;
+          _this$props5.textCustomClassName;
+          var customDropdownClassName = _this$props5.customDropdownClassName,
           children = _this$props5.children,
-          classes = _this$props5.classes,
-          itemId = _this$props5.itemId,
-          menuId = _this$props5.menuId,
-          mode = _this$props5.mode,
-          url = _this$props5.url,
+          classes = _this$props5.classes;
+          _this$props5.itemId;
+          _this$props5.menuId;
+          _this$props5.mode;
+          var url = _this$props5.url,
           urlTarget = _this$props5.urlTarget,
           icon = _this$props5.icon,
           customIconClassName = _this$props5.iconClassName,
           vertical = _this$props5.vertical,
-          route = _this$props5.route,
-          staticContext = _this$props5.staticContext,
-          store = _this$props5.store,
-          toolbar = _this$props5.toolbar,
+          route = _this$props5.route;
+          _this$props5.staticContext;
+          _this$props5.store;
+          var toolbar = _this$props5.toolbar,
           collapsible = _this$props5.collapsible,
           header = _this$props5.header,
           divider = _this$props5.divider,
@@ -27325,17 +26337,17 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
       var _this$state2 = this.state,
           isOpen = _this$state2.isOpen,
           itemMode = _this$state2.itemMode;
-      var customClass = classnames(customClassName, (_cx = {}, _defineProperty(_cx, classes.disabledItem, disabled), _defineProperty(_cx, 'parent uk-parent', parent), _defineProperty(_cx, 'uk-nav-header', header), _defineProperty(_cx, 'uk-nav-divider', divider), _cx));
+      var customClass = classnames(customClassName, (_cx = {}, _defineProperty$1(_cx, classes.disabledItem, disabled), _defineProperty$1(_cx, 'parent uk-parent', parent), _defineProperty$1(_cx, 'uk-nav-header', header), _defineProperty$1(_cx, 'uk-nav-divider', divider), _cx));
       var mouseEvents = {
         onClick: disabled ? null : this.handleClick,
         onMouseEnter: disabled ? null : this.handleMouseEnter,
         onMouseLeave: disabled ? null : this.handleMouseLeave
       };
       var iconClass = classnames(classes.iconClass, customIconClassName);
-      var parentClassName = classnames(customDropdownClassName, _defineProperty({
+      var parentClassName = classnames(customDropdownClassName, _defineProperty$1({
         "uk-navbar-dropdown": parent
       }, classes.subMenuWrapper, parent));
-      var itemTextClass = classnames((_cx3 = {}, _defineProperty(_cx3, classes.menuItemText, !toolbar), _defineProperty(_cx3, classes.activeMenuItem, active), _cx3));
+      var itemTextClass = classnames((_cx3 = {}, _defineProperty$1(_cx3, classes.menuItemText, !toolbar), _defineProperty$1(_cx3, classes.activeMenuItem, active), _cx3));
       var renderCollapsibleSubMenu = parent && !disabled && /*#__PURE__*/React.createElement("ul", {
         className: "uk-nav-sub"
       }, children);
@@ -27348,7 +26360,7 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
       }, /*#__PURE__*/React.createElement("ul", {
         className: classnames("uk-nav uk-navbar-dropdown-nav", classes.subMenu)
       }, children));
-      return /*#__PURE__*/React.createElement("li", _extends({}, mouseEvents, other, {
+      return /*#__PURE__*/React.createElement("li", _extends$2({}, mouseEvents, other, {
         className: customClass,
         ref: function ref(item) {
           _this2.menuItemRef = item;
@@ -27359,13 +26371,13 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
         "aria-haspopup": parent,
         "aria-expanded": isOpen
       }), !(header || divider) ? route ? /*#__PURE__*/React.createElement(Link, {
-        replace: route === this.props.history.location.pathname,
         to: route,
+        replace: true,
         className: itemTextClass
-      }, icon && /*#__PURE__*/React.createElement(_icon, {
+      }, icon && /*#__PURE__*/React.createElement(Icon, {
         name: icon,
         className: iconClass
-      }), text, parent && !toolbar && !collapsible && /*#__PURE__*/React.createElement(_icon, {
+      }), text, parent && !toolbar && !collapsible && /*#__PURE__*/React.createElement(Icon, {
         name: "triangle-right",
         className: classes.iconStyle
       })) : /*#__PURE__*/React.createElement("a", {
@@ -27373,10 +26385,10 @@ var RegularMenuItem = /*#__PURE__*/function (_Component) {
         target: urlTarget,
         className: itemTextClass,
         onClick: this.handleLinkClick
-      }, icon && /*#__PURE__*/React.createElement(_icon, {
+      }, icon && /*#__PURE__*/React.createElement(Icon, {
         name: icon,
         className: iconClass
-      }), text, parent && !toolbar && !collapsible && /*#__PURE__*/React.createElement(_icon, {
+      }), text, parent && !toolbar && !collapsible && /*#__PURE__*/React.createElement(Icon, {
         name: "triangle-right",
         className: classes.iconStyle
       })) : '', !(header || divider) ? collapsible ? renderCollapsibleSubMenu : renderSubMenu : '', header ? text : '');
@@ -27456,11 +26468,10 @@ RegularMenuItem.defaultProps = {
   // for collapsible
   text: ''
 };
-var styledMenuItem = createWithStyles(menuStyle)(RegularMenuItem);
-var routeMenuItem = withRouter(styledMenuItem);
+var styledMenuItem = createWithStyles(menuStyle)(RegularMenuItem); //const routeMenuItem = withRouter(styledMenuItem)
 
 /* eslint-disable */
-var noop$1 = function noop() {};
+var noop = function noop() {};
 
 /**
  * @license
@@ -27478,14 +26489,15 @@ var lodash = createCommonjsModule(function (module, exports) {
   var undefined$1;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.20';
+  var VERSION = '4.17.21';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
 
   /** Error message constants. */
   var CORE_ERROR_TEXT = 'Unsupported core-js use. Try https://npms.io/search?q=ponyfill.',
-      FUNC_ERROR_TEXT = 'Expected a function';
+      FUNC_ERROR_TEXT = 'Expected a function',
+      INVALID_TEMPL_VAR_ERROR_TEXT = 'Invalid `variable` option passed into `_.template`';
 
   /** Used to stand-in for `undefined` hash values. */
   var HASH_UNDEFINED = '__lodash_hash_undefined__';
@@ -27618,10 +26630,11 @@ var lodash = createCommonjsModule(function (module, exports) {
   var reRegExpChar = /[\\^$.*+?()[\]{}|]/g,
       reHasRegExpChar = RegExp(reRegExpChar.source);
 
-  /** Used to match leading and trailing whitespace. */
-  var reTrim = /^\s+|\s+$/g,
-      reTrimStart = /^\s+/,
-      reTrimEnd = /\s+$/;
+  /** Used to match leading whitespace. */
+  var reTrimStart = /^\s+/;
+
+  /** Used to match a single whitespace character. */
+  var reWhitespace = /\s/;
 
   /** Used to match wrap detail comments. */
   var reWrapComment = /\{(?:\n\/\* \[wrapped with .+\] \*\/)?\n?/,
@@ -27630,6 +26643,18 @@ var lodash = createCommonjsModule(function (module, exports) {
 
   /** Used to match words composed of alphanumeric characters. */
   var reAsciiWord = /[^\x00-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+/g;
+
+  /**
+   * Used to validate the `validate` option in `_.template` variable.
+   *
+   * Forbids characters which could potentially change the meaning of the function argument definition:
+   * - "()," (modification of function parameters)
+   * - "=" (default value)
+   * - "[]{}" (destructuring of function parameters)
+   * - "/" (beginning of a comment)
+   * - whitespace
+   */
+  var reForbiddenIdentifierChars = /[()=,{}\[\]\/\s]/;
 
   /** Used to match backslashes in property paths. */
   var reEscapeChar = /\\(\\)?/g;
@@ -27879,7 +26904,7 @@ var lodash = createCommonjsModule(function (module, exports) {
       freeParseInt = parseInt;
 
   /** Detect free variable `global` from Node.js. */
-  var freeGlobal = typeof commonjsGlobal == 'object' && commonjsGlobal && commonjsGlobal.Object === Object && commonjsGlobal;
+  var freeGlobal = typeof commonjsGlobal$1 == 'object' && commonjsGlobal$1 && commonjsGlobal$1.Object === Object && commonjsGlobal$1;
 
   /** Detect free variable `self`. */
   var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
@@ -27888,7 +26913,7 @@ var lodash = createCommonjsModule(function (module, exports) {
   var root = freeGlobal || freeSelf || Function('return this')();
 
   /** Detect free variable `exports`. */
-  var freeExports =  exports && !exports.nodeType && exports;
+  var freeExports = exports && !exports.nodeType && exports;
 
   /** Detect free variable `module`. */
   var freeModule = freeExports && 'object' == 'object' && module && !module.nodeType && module;
@@ -28460,6 +27485,19 @@ var lodash = createCommonjsModule(function (module, exports) {
   }
 
   /**
+   * The base implementation of `_.trim`.
+   *
+   * @private
+   * @param {string} string The string to trim.
+   * @returns {string} Returns the trimmed string.
+   */
+  function baseTrim(string) {
+    return string
+      ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, '')
+      : string;
+  }
+
+  /**
    * The base implementation of `_.unary` without support for storing metadata.
    *
    * @private
@@ -28790,6 +27828,21 @@ var lodash = createCommonjsModule(function (module, exports) {
     return hasUnicode(string)
       ? unicodeToArray(string)
       : asciiToArray(string);
+  }
+
+  /**
+   * Used by `_.trim` and `_.trimEnd` to get the index of the last non-whitespace
+   * character of `string`.
+   *
+   * @private
+   * @param {string} string The string to inspect.
+   * @returns {number} Returns the index of the last non-whitespace character.
+   */
+  function trimmedEndIndex(string) {
+    var index = string.length;
+
+    while (index-- && reWhitespace.test(string.charAt(index))) {}
+    return index;
   }
 
   /**
@@ -39960,7 +39013,7 @@ var lodash = createCommonjsModule(function (module, exports) {
       if (typeof value != 'string') {
         return value === 0 ? value : +value;
       }
-      value = value.replace(reTrim, '');
+      value = baseTrim(value);
       var isBinary = reIsBinary.test(value);
       return (isBinary || reIsOctal.test(value))
         ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
@@ -42332,6 +41385,12 @@ var lodash = createCommonjsModule(function (module, exports) {
       if (!variable) {
         source = 'with (obj) {\n' + source + '\n}\n';
       }
+      // Throw an error if a forbidden character was found in `variable`, to prevent
+      // potential command injection attacks.
+      else if (reForbiddenIdentifierChars.test(variable)) {
+        throw new Error(INVALID_TEMPL_VAR_ERROR_TEXT);
+      }
+
       // Cleanup code by stripping empty strings.
       source = (isEvaluating ? source.replace(reEmptyStringLeading, '') : source)
         .replace(reEmptyStringMiddle, '$1')
@@ -42445,7 +41504,7 @@ var lodash = createCommonjsModule(function (module, exports) {
     function trim(string, chars, guard) {
       string = toString(string);
       if (string && (guard || chars === undefined$1)) {
-        return string.replace(reTrim, '');
+        return baseTrim(string);
       }
       if (!string || !(chars = baseToString(chars))) {
         return string;
@@ -42480,7 +41539,7 @@ var lodash = createCommonjsModule(function (module, exports) {
     function trimEnd(string, chars, guard) {
       string = toString(string);
       if (string && (guard || chars === undefined$1)) {
-        return string.replace(reTrimEnd, '');
+        return string.slice(0, trimmedEndIndex(string) + 1);
       }
       if (!string || !(chars = baseToString(chars))) {
         return string;
@@ -44610,7 +43669,7 @@ var lodash = createCommonjsModule(function (module, exports) {
     // Export to the global object.
     root._ = _;
   }
-}.call(commonjsGlobal));
+}.call(commonjsGlobal$1));
 });
 
 var RegularMenu = /*#__PURE__*/function (_Component) {
@@ -44657,7 +43716,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
     return _this;
   }
 
-  _createClass(RegularMenu, [{
+  _createClass$1(RegularMenu, [{
     key: "shouldComponentUpdate",
     value: function shouldComponentUpdate(nextProps, nextState) {
       return nextState.updateComponent;
@@ -44686,7 +43745,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
 
       var navClass = classnames("uk-navbar-container", {
         "uk-navbar-transparent": transparent
-      }, customClassName, _defineProperty({}, classes.verticalNavStyle, vertical));
+      }, customClassName, _defineProperty$1({}, classes.verticalNavStyle, vertical));
       var containerClassName = classnames({
         "uk-navbar-left": alignItems === 'left',
         "uk-navbar-right": alignItems === 'right',
@@ -44700,7 +43759,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
             itemIndex = _ref.itemIndex;
         return lodash.map(menuItems, function (item, index) {
           var itemId = typeof itemIndex !== 'undefined' ? "".concat(menuId, "-menu-item-").concat(itemIndex, "-").concat(index) : "".concat(menuId, "-menu-item-").concat(index);
-          return /*#__PURE__*/createElement(routeMenuItem, _objectSpread2(_objectSpread2({}, item), {}, {
+          return /*#__PURE__*/createElement(styledMenuItem, _objectSpread2(_objectSpread2({}, item), {}, {
             vertical: vertical,
             parent: item.hasOwnProperty('items'),
             key: itemId,
@@ -44743,7 +43802,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
         setMenuStyle = Object.assign(setMenuStyle, theme.darkTheme);
       }
 
-      return /*#__PURE__*/React.createElement(React.Fragment, null, collapsible && /*#__PURE__*/React.createElement("div", {
+      return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(HashRouter, null, collapsible && /*#__PURE__*/React.createElement("div", {
         className: "uk-nav uk-nav-default tm-nav"
       }, /*#__PURE__*/React.createElement("ul", {
         className: "uk-nav-default uk-nav-parent-icon",
@@ -44754,7 +43813,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
         collapsible: collapsible
       }) : /*#__PURE__*/React.createElement(CloneItems, {
         children: children
-      }))), !collapsible && /*#__PURE__*/React.createElement("nav", _extends({
+      }))), !collapsible && /*#__PURE__*/React.createElement("nav", _extends$2({
         className: navClass,
         "uk-navbar": "mode:".concat(mode, ";vertical:").concat(vertical, ";")
       }, other, {
@@ -44772,7 +43831,7 @@ var RegularMenu = /*#__PURE__*/function (_Component) {
         collapsible: collapsible
       }) : /*#__PURE__*/React.createElement(CloneItems, {
         children: children
-      })))));
+      }))))));
     }
   }]);
 
@@ -44797,7 +43856,7 @@ RegularMenu.defaultProps = {
   items: [],
   mode: "hover",
   vertical: false,
-  onSelect: noop$1,
+  onSelect: noop,
   menuId: "menu-".concat(uuid_1()),
   toolbar: false,
   transparent: false,
@@ -44823,16 +43882,16 @@ var ToolbarItem = /*#__PURE__*/function (_Component) {
     return _this;
   }
 
-  _createClass(ToolbarItem, [{
+  _createClass$1(ToolbarItem, [{
     key: "componentDidMount",
     value: function componentDidMount() {}
   }, {
     key: "render",
     value: function render() {
       var _this$props = this.props,
-          children = _this$props.children,
-          classes = _this$props.classes,
-          align = _this$props.align,
+          children = _this$props.children;
+          _this$props.classes;
+          var align = _this$props.align,
           customClassName = _this$props.className,
           other = _objectWithoutProperties(_this$props, ["children", "classes", "align", "className"]);
 
@@ -44841,7 +43900,7 @@ var ToolbarItem = /*#__PURE__*/function (_Component) {
         "uk-navbar-right": align === 'right',
         "uk-navbar-center": align === 'center'
       }, customClassName);
-      return /*#__PURE__*/React.createElement("div", _extends({
+      return /*#__PURE__*/React.createElement("div", _extends$2({
         className: itemClass
       }, other), React.Children.map(children, function (child, index) {
         if (child.type === styledMenu) {
@@ -44884,7 +43943,7 @@ var Toolbar = /*#__PURE__*/function (_Component) {
     return _this;
   }
 
-  _createClass(Toolbar, [{
+  _createClass$1(Toolbar, [{
     key: "componentDidMount",
     value: function componentDidMount() {}
   }, {
@@ -44900,7 +43959,7 @@ var Toolbar = /*#__PURE__*/function (_Component) {
       var toolbarClass = classnames('uk-navbar uk-navbar-container uk-margin', {
         "uk-navbar-transparent": transparent
       }, classes.root, customClassName);
-      return /*#__PURE__*/React.createElement("nav", _extends({
+      return /*#__PURE__*/React.createElement("nav", _extends$2({
         className: toolbarClass
       }, other, {
         "uk-navbar": ""
@@ -44923,13 +43982,41 @@ Toolbar.defaultProps = {
 };
 var styledToolBar = createWithStyles(toolbarStyle)(Toolbar);
 
+var ToolbarContent = function ToolbarContent(_ref) {
+  var children = _ref.children,
+      align = _ref.align,
+      customClassName = _ref.className,
+      other = _objectWithoutProperties(_ref, ["children", "align", "className"]);
+
+  var setClassName = classnames({
+    "uk-navbar-item": !align,
+    "uk-navbar-center": align === 'center',
+    "uk-navbar-center-left": align === 'left',
+    "uk-navbar-center-right": align === 'right'
+  }, customClassName);
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: setClassName
+  }, other), /*#__PURE__*/React.createElement("div", null, React.Children.map(children, function (child, index) {
+    if (child.type === styledMenu) {
+      return /*#__PURE__*/cloneElement(child, {
+        toolbar: true,
+        key: index
+      });
+    }
+
+    return /*#__PURE__*/cloneElement(child, _objectSpread2(_objectSpread2({}, child.props), {}, {
+      key: index
+    }));
+  })));
+};
+
 var RegularMargin = function RegularMargin(_ref) {
   var _classNames;
 
   var children = _ref.children,
       type = _ref.type,
       classes = _ref.classes;
-  var customClassName = classnames((_classNames = {}, _defineProperty(_classNames, classes["default"], type === 'default'), _defineProperty(_classNames, classes.top, type === 'top'), _defineProperty(_classNames, classes.bottom, type === 'bottom'), _defineProperty(_classNames, classes.left, type === 'left'), _defineProperty(_classNames, classes.right, type === 'right'), _defineProperty(_classNames, classes.small, type === 'small'), _defineProperty(_classNames, classes.smallTop, type === 'small-top'), _defineProperty(_classNames, classes.smallBottom, type === 'small-bottom'), _defineProperty(_classNames, classes.smallLeft, type === 'small-left'), _defineProperty(_classNames, classes.smallRight, type === 'small-right'), _defineProperty(_classNames, classes.medium, type === 'medium'), _defineProperty(_classNames, classes.mediumTop, type === 'medium-top'), _defineProperty(_classNames, classes.mediumBottom, type === 'medium-bottom'), _defineProperty(_classNames, classes.mediumLeft, type === 'medium-left'), _defineProperty(_classNames, classes.mediumRight, type === 'medium-right'), _defineProperty(_classNames, classes.large, type === 'large'), _defineProperty(_classNames, classes.largeTop, type === 'large-top'), _defineProperty(_classNames, classes.largeBottom, type === 'large-bottom'), _defineProperty(_classNames, classes.largeLeft, type === 'large-left'), _defineProperty(_classNames, classes.largeRight, type === 'large-right'), _defineProperty(_classNames, classes.xlarge, type === 'xlarge'), _defineProperty(_classNames, classes.xlargeTop, type === 'xlarge-top'), _defineProperty(_classNames, classes.xlargeBottom, type === 'xlarge-bottom'), _defineProperty(_classNames, classes.xlargeLeft, type === 'xlarge-left'), _defineProperty(_classNames, classes.xlargeRight, type === 'xlarge-right'), _defineProperty(_classNames, classes.remove, type === 'remove'), _defineProperty(_classNames, classes.removeTop, type === 'remove-top'), _defineProperty(_classNames, classes.removeBottom, type === 'remove-bottom'), _defineProperty(_classNames, classes.removeLeft, type === 'remove-left'), _defineProperty(_classNames, classes.removeRight, type === 'remove-right'), _defineProperty(_classNames, classes.removeVertical, type === 'remove-vertical'), _defineProperty(_classNames, classes.removeAdjacent, type === 'remove-adjacent'), _defineProperty(_classNames, classes.auto, type === 'auto'), _defineProperty(_classNames, classes.autoTop, type === 'auto-top'), _defineProperty(_classNames, classes.autoBottom, type === 'auto-bottom'), _defineProperty(_classNames, classes.autoLeft, type === 'auto-left'), _defineProperty(_classNames, classes.autoRight, type === 'auto-right'), _defineProperty(_classNames, classes.autoVertical, type === 'auto-vertical'), _classNames));
+  var customClassName = classnames((_classNames = {}, _defineProperty$1(_classNames, classes["default"], type === 'default'), _defineProperty$1(_classNames, classes.top, type === 'top'), _defineProperty$1(_classNames, classes.bottom, type === 'bottom'), _defineProperty$1(_classNames, classes.left, type === 'left'), _defineProperty$1(_classNames, classes.right, type === 'right'), _defineProperty$1(_classNames, classes.small, type === 'small'), _defineProperty$1(_classNames, classes.smallTop, type === 'small-top'), _defineProperty$1(_classNames, classes.smallBottom, type === 'small-bottom'), _defineProperty$1(_classNames, classes.smallLeft, type === 'small-left'), _defineProperty$1(_classNames, classes.smallRight, type === 'small-right'), _defineProperty$1(_classNames, classes.medium, type === 'medium'), _defineProperty$1(_classNames, classes.mediumTop, type === 'medium-top'), _defineProperty$1(_classNames, classes.mediumBottom, type === 'medium-bottom'), _defineProperty$1(_classNames, classes.mediumLeft, type === 'medium-left'), _defineProperty$1(_classNames, classes.mediumRight, type === 'medium-right'), _defineProperty$1(_classNames, classes.large, type === 'large'), _defineProperty$1(_classNames, classes.largeTop, type === 'large-top'), _defineProperty$1(_classNames, classes.largeBottom, type === 'large-bottom'), _defineProperty$1(_classNames, classes.largeLeft, type === 'large-left'), _defineProperty$1(_classNames, classes.largeRight, type === 'large-right'), _defineProperty$1(_classNames, classes.xlarge, type === 'xlarge'), _defineProperty$1(_classNames, classes.xlargeTop, type === 'xlarge-top'), _defineProperty$1(_classNames, classes.xlargeBottom, type === 'xlarge-bottom'), _defineProperty$1(_classNames, classes.xlargeLeft, type === 'xlarge-left'), _defineProperty$1(_classNames, classes.xlargeRight, type === 'xlarge-right'), _defineProperty$1(_classNames, classes.remove, type === 'remove'), _defineProperty$1(_classNames, classes.removeTop, type === 'remove-top'), _defineProperty$1(_classNames, classes.removeBottom, type === 'remove-bottom'), _defineProperty$1(_classNames, classes.removeLeft, type === 'remove-left'), _defineProperty$1(_classNames, classes.removeRight, type === 'remove-right'), _defineProperty$1(_classNames, classes.removeVertical, type === 'remove-vertical'), _defineProperty$1(_classNames, classes.removeAdjacent, type === 'remove-adjacent'), _defineProperty$1(_classNames, classes.auto, type === 'auto'), _defineProperty$1(_classNames, classes.autoTop, type === 'auto-top'), _defineProperty$1(_classNames, classes.autoBottom, type === 'auto-bottom'), _defineProperty$1(_classNames, classes.autoLeft, type === 'auto-left'), _defineProperty$1(_classNames, classes.autoRight, type === 'auto-right'), _defineProperty$1(_classNames, classes.autoVertical, type === 'auto-vertical'), _classNames));
   return /*#__PURE__*/React.createElement("div", null, React.Children.map(children, function (item, index) {
     return /*#__PURE__*/cloneElement(item, _objectSpread2(_objectSpread2({
       key: "element-".concat(index)
@@ -44953,7 +44040,7 @@ function onSelectPropType(props, propName, componentName, location, propFullName
   var error = null;
 
   if (prop && typeof prop !== 'function') {
-    error = new Error("Invalid ".concat(location, " `").concat(name, "` of type `").concat(_typeof(prop), "` supplied ") + "to `".concat(componentName, "`, expected `function`."));
+    error = new Error("Invalid ".concat(location, " `").concat(name, "` of type `").concat(_typeof$1(prop), "` supplied ") + "to `".concat(componentName, "`, expected `function`."));
   } else if (props.selectedIndex != null && prop == null) {
     error = new Error("The ".concat(location, " `").concat(name, "` is marked as required in `").concat(componentName, "`, but ") + "its value is `undefined` or `null`.\n" + "`onSelect` is required when `selectedIndex` is also set. Not doing so will " + "make the tabs not do anything, as `selectedIndex` indicates that you want to " + "handle the selected tab yourself.");
   }
@@ -44966,7 +44053,7 @@ function selectedIndexPropType(props, propName, componentName, location, propFul
   var error = null;
 
   if (prop != null && typeof prop !== 'number') {
-    error = new Error("Invalid ".concat(location, " `").concat(name, "` of type `").concat(_typeof(prop), "` supplied to ") + "`".concat(componentName, "`, expected `number`."));
+    error = new Error("Invalid ".concat(location, " `").concat(name, "` of type `").concat(_typeof$1(prop), "` supplied to ") + "`".concat(componentName, "`, expected `number`."));
   } else if (props.defaultIndex != null && prop != null) {
     return new Error("The ".concat(location, " `").concat(name, "` cannot be used together with `defaultIndex` ") + "in `".concat(componentName, "`.\n") + "Either remove `".concat(name, "` to let `").concat(componentName, "` handle the selected ") + "tab internally or remove `defaultIndex` to handle it yourself.");
   }
@@ -45101,11 +44188,11 @@ var TabStrip = /*#__PURE__*/function (_Component) {
       openDropDown: false
     };
     _this.tabStripRef = /*#__PURE__*/React.createRef();
-    _this.getSelectedTab = _this.getSelectedTab.bind(_assertThisInitialized(_this));
-    _this.setSelectedTabState = _this.setSelectedTabState.bind(_assertThisInitialized(_this));
-    _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized(_this));
-    _this.setFocusToNextTab = _this.setFocusToNextTab.bind(_assertThisInitialized(_this));
-    _this.setFocusToPreviousTab = _this.setFocusToPreviousTab.bind(_assertThisInitialized(_this));
+    _this.getSelectedTab = _this.getSelectedTab.bind(_assertThisInitialized$2(_this));
+    _this.setSelectedTabState = _this.setSelectedTabState.bind(_assertThisInitialized$2(_this));
+    _this.handleKeyDown = _this.handleKeyDown.bind(_assertThisInitialized$2(_this));
+    _this.setFocusToNextTab = _this.setFocusToNextTab.bind(_assertThisInitialized$2(_this));
+    _this.setFocusToPreviousTab = _this.setFocusToPreviousTab.bind(_assertThisInitialized$2(_this));
     _this.keyCode = Object.freeze({
       TAB: 9,
       RETURN: 13,
@@ -45124,7 +44211,7 @@ var TabStrip = /*#__PURE__*/function (_Component) {
     return _this;
   }
 
-  _createClass(TabStrip, [{
+  _createClass$1(TabStrip, [{
     key: "handleSelected",
     value: function handleSelected(index, event) {
       var onSelect = this.props.onSelect;
@@ -45257,25 +44344,25 @@ var TabStrip = /*#__PURE__*/function (_Component) {
     value: function render() {
       var _this2 = this;
 
-      var _this$props = this.props,
-          classes = _this$props.classes,
-          customClassName = _this$props.className,
-          contentClassName = _this$props.contentClassName,
-          selected = _this$props.selected,
-          children = _this$props.children,
-          alignTabs = _this$props.alignTabs,
-          store = _this$props.store,
-          animation = _this$props.animation,
-          duration = _this$props.duration,
-          items = _this$props.items,
-          other = _objectWithoutProperties(_this$props, ["classes", "className", "contentClassName", "selected", "children", "alignTabs", "store", "animation", "duration", "items"]);
+      var _this$props = this.props;
+          _this$props.classes;
+          var customClassName = _this$props.className,
+          contentClassName = _this$props.contentClassName;
+          _this$props.selected;
+          var children = _this$props.children,
+          alignTabs = _this$props.alignTabs;
+          _this$props.store;
+          var animation = _this$props.animation,
+          duration = _this$props.duration;
+          _this$props.items;
+          var other = _objectWithoutProperties(_this$props, ["classes", "className", "contentClassName", "selected", "children", "alignTabs", "store", "animation", "duration", "items"]);
 
       var _this$state3 = this.state,
           selectedIndex = _this$state3.selectedIndex,
           selectedTabItemIndex = _this$state3.selectedTabItemIndex,
           openDropDown = _this$state3.openDropDown;
       var styles = tabStripStyle(alignTabs, null, null, animation, duration);
-      var className = noImportant$1.css(styles["default"]);
+      var className = noImportant.css(styles["default"]);
       var events = {
         onSelect: this.handleSelected
       };
@@ -45297,7 +44384,7 @@ var TabStrip = /*#__PURE__*/function (_Component) {
           return item.props.children.map(function (tabItem, tabItemIndex) {
             if (tabItemIndex === selectedTabItemIndex && !tabItem.props.disabled) {
               return /*#__PURE__*/React.createElement("div", {
-                className: classnames(contentClassName, noImportant$1.css(styles.content, styles.animation)),
+                className: classnames(contentClassName, noImportant.css(styles.content, styles.animation)),
                 key: "".concat(index, "-").concat(tabItemIndex)
               }, tabItem.props.children);
             }
@@ -45306,7 +44393,7 @@ var TabStrip = /*#__PURE__*/function (_Component) {
           });
         } else if (index === selectedIndex && !item.props.disabled) {
           return /*#__PURE__*/React.createElement("div", {
-            className: classnames(contentClassName, noImportant$1.css(styles.content, styles.animation)),
+            className: classnames(contentClassName, noImportant.css(styles.content, styles.animation)),
             key: index
           }, item.props.children);
         }
@@ -45314,12 +44401,12 @@ var TabStrip = /*#__PURE__*/function (_Component) {
         return null;
       });
       return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-        className: noImportant$1.css(styles.gridStyle)
+        className: noImportant.css(styles.gridStyle)
       }, /*#__PURE__*/React.createElement("div", {
-        className: noImportant$1.css(styles.tabWrapper),
+        className: noImportant.css(styles.tabWrapper),
         tabIndex: 0,
         onKeyDown: this.handleKeyDown
-      }, /*#__PURE__*/React.createElement("ul", _extends({
+      }, /*#__PURE__*/React.createElement("ul", _extends$2({
         className: classnames(className, customClassName)
       }, other, events, {
         ref: this.tabStripRef,
@@ -45376,10 +44463,10 @@ var Tab = /*#__PURE__*/function (_Component) {
       selected: false,
       tabItemIndex: 0
     };
-    _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
+    _this.handleClick = _this.handleClick.bind(_assertThisInitialized$2(_this));
     _this.dropDownWrapperRef = /*#__PURE__*/React.createRef();
-    _this.toggleDropDown = _this.toggleDropDown.bind(_assertThisInitialized(_this));
-    _this.dropDownClickOutSide = _this.dropDownClickOutSide.bind(_assertThisInitialized(_this));
+    _this.toggleDropDown = _this.toggleDropDown.bind(_assertThisInitialized$2(_this));
+    _this.dropDownClickOutSide = _this.dropDownClickOutSide.bind(_assertThisInitialized$2(_this));
     _this.keyCode = Object.freeze({
       TAB: 9,
       RETURN: 13,
@@ -45399,7 +44486,7 @@ var Tab = /*#__PURE__*/function (_Component) {
     return _this;
   }
 
-  _createClass(Tab, [{
+  _createClass$1(Tab, [{
     key: "handleClick",
     value: function handleClick(e) {
       var onClick = this.props.onClick;
@@ -45464,29 +44551,29 @@ var Tab = /*#__PURE__*/function (_Component) {
     value: function render() {
       var _this2 = this;
 
-      var _this$props2 = this.props,
-          text = _this$props2.text,
-          id = _this$props2.id,
-          tabIndex = _this$props2.tabIndex,
+      var _this$props2 = this.props;
+          _this$props2.text;
+          _this$props2.id;
+          var tabIndex = _this$props2.tabIndex,
           disabled = _this$props2.disabled,
-          customClassName = _this$props2.className,
-          classes = _this$props2.classes,
-          children = _this$props2.children,
+          customClassName = _this$props2.className;
+          _this$props2.classes;
+          var children = _this$props2.children,
           title = _this$props2.title,
           alignment = _this$props2.alignment,
-          dropdown = _this$props2.dropdown,
-          animation = _this$props2.animation,
-          openDropDown = _this$props2.openDropDown,
-          selectedTabItemIndex = _this$props2.selectedTabItemIndex,
-          store = _this$props2.store,
-          other = _objectWithoutProperties(_this$props2, ["text", "id", "tabIndex", "disabled", "className", "classes", "children", "title", "alignment", "dropdown", "animation", "openDropDown", "selectedTabItemIndex", "store"]);
+          dropdown = _this$props2.dropdown;
+          _this$props2.animation;
+          var openDropDown = _this$props2.openDropDown,
+          selectedTabItemIndex = _this$props2.selectedTabItemIndex;
+          _this$props2.store;
+          var other = _objectWithoutProperties(_this$props2, ["text", "id", "tabIndex", "disabled", "className", "classes", "children", "title", "alignment", "dropdown", "animation", "openDropDown", "selectedTabItemIndex", "store"]);
 
       var _this$state = this.state,
           dropDownOpen = _this$state.dropDownOpen,
           selected = _this$state.selected,
           tabItemIndex = _this$state.tabItemIndex;
       var styles = tabStripStyle(alignment, selected, disabled);
-      var className = classnames(customClassName, noImportant$1.css(styles.text));
+      var className = classnames(customClassName, noImportant.css(styles.text));
       var tabItems = React.Children.map(children, function (child, index) {
         if (child.type === TabItem) {
           return /*#__PURE__*/cloneElement(child, {
@@ -45497,7 +44584,7 @@ var Tab = /*#__PURE__*/function (_Component) {
           });
         }
       });
-      return /*#__PURE__*/React.createElement("li", _extends({}, other, {
+      return /*#__PURE__*/React.createElement("li", _extends$2({}, other, {
         role: "tab",
         "aria-selected": selected,
         "aria-disabled": disabled,
@@ -45509,14 +44596,14 @@ var Tab = /*#__PURE__*/function (_Component) {
       }), dropdown && /*#__PURE__*/React.createElement("div", {
         ref: this.dropDownWrapperRef,
         onClick: this.toggleDropDown
-      }, title, " ", dropDownOpen ? /*#__PURE__*/React.createElement(_icon, {
+      }, title, " ", dropDownOpen ? /*#__PURE__*/React.createElement(Icon, {
         name: "triangle-up"
-      }) : /*#__PURE__*/React.createElement(_icon, {
+      }) : /*#__PURE__*/React.createElement(Icon, {
         name: "triangle-down"
       }), (dropDownOpen || openDropDown) && /*#__PURE__*/React.createElement("div", {
-        className: noImportant$1.css(styles.dropDownWrapper)
+        className: noImportant.css(styles.dropDownWrapper)
       }, /*#__PURE__*/React.createElement("ul", {
-        className: noImportant$1.css(styles.dropDownStyle)
+        className: noImportant.css(styles.dropDownStyle)
       }, tabItems))), dropdown === false && /*#__PURE__*/React.createElement("span", null, title));
     }
   }], [{
@@ -45587,12 +44674,12 @@ var TabItem = /*#__PURE__*/function (_Component) {
     _this.state = {
       selected: props.selected
     };
-    _this.handleClick = _this.handleClick.bind(_assertThisInitialized(_this));
+    _this.handleClick = _this.handleClick.bind(_assertThisInitialized$2(_this));
     _this.tabItemRef = /*#__PURE__*/React.createRef();
     return _this;
   }
 
-  _createClass(TabItem, [{
+  _createClass$1(TabItem, [{
     key: "handleClick",
     value: function handleClick(e) {
       var onClick = this.props.onClick;
@@ -45616,8 +44703,8 @@ var TabItem = /*#__PURE__*/function (_Component) {
 
       var selected = this.state.selected;
       var styles = tabStripStyle();
-      var className = classnames(customClassName, noImportant$1.css(styles.dropdownItemStyle, disabled ? styles.disabledDropDownItem : "", selected ? styles.activeTab : ""));
-      return /*#__PURE__*/React.createElement("li", _extends({
+      var className = classnames(customClassName, noImportant.css(styles.dropdownItemStyle, disabled ? styles.disabledDropDownItem : "", selected ? styles.activeTab : ""));
+      return /*#__PURE__*/React.createElement("li", _extends$2({
         ref: this.tabItemRef,
         className: className,
         onClick: this.handleClick,
@@ -45656,7 +44743,7 @@ TabItem.defaultPropTypes = {
   selected: false
 };
 
-var styles$3 = function styles(position, width) {
+var styles$1 = function styles(position, width) {
   var canvasWidth = width ? "".concat(width, "px") : "270px";
   var canvasRelWidth = width ? "".concat(width, "px") : "350px";
   var pushRightWidth = width ? "".concat(width - 20, "px") : "330px";
@@ -45673,7 +44760,7 @@ var styles$3 = function styles(position, width) {
       left: position === "left" ? "-".concat(canvasRelWidth) : null
     }
   };
-  return noImportant$1.StyleSheet.create({
+  return noImportant.StyleSheet.create({
     pushStyle: {
       right: position === "right" ? "".concat(width, " !important") : null,
       left: position === "left" ? "".concat(width, " !important") : null,
@@ -45768,24 +44855,6 @@ var OffCanvas = function OffCanvas(props) {
       onClick = props.onClick,
       other = _objectWithoutProperties(props, ["children", "className", "classes", "open", "overlay", "overlayBackground", "position", "overlayClick", "overlayClassName", "style", "width", "onClick"]);
 
-  var _useState = useState(false),
-      _useState2 = _slicedToArray(_useState, 2),
-      openCanvas = _useState2[0],
-      setOpenCanvas = _useState2[1];
-
-  var _useState3 = useState("left"),
-      _useState4 = _slicedToArray(_useState3, 2),
-      canvasPosition = _useState4[0],
-      setCanvasPosition = _useState4[1];
-
-  if (openCanvas !== open) {
-    setOpenCanvas(open);
-  }
-
-  if (canvasPosition !== position) {
-    setCanvasPosition(position);
-  }
-
   var canvasClick = function canvasClick(e) {
     e.stopPropagation();
 
@@ -45794,13 +44863,13 @@ var OffCanvas = function OffCanvas(props) {
     }
   };
 
-  var canvasStyles = styles$3(canvasPosition, width);
-  var pushStyle = canvasStyles.pushStyle;
-  addBodyStyle(canvasPosition);
+  var canvasStyles = styles$1(position, width);
+  canvasStyles.pushStyle;
+  addBodyStyle(position);
   document.documentElement.style.overflow = null;
-  var canvasClass = classnames(noImportant$1.css(canvasStyles.canvas), noImportant$1.css(canvasStyles.animationStyle), noImportant$1.css(openCanvas ? canvasStyles.openStyle : ""), noImportant$1.css(canvasStyles.transitionStyle), customClassName);
-  var overlayClass = classnames((_cx = {}, _defineProperty(_cx, classes.overlay, overlay), _defineProperty(_cx, classes.overlayBackground, overlayBackground && overlay), _cx), overlayClassName);
-  var canvasBarClass = noImportant$1.css(canvasStyles.canvasBarStyle);
+  var canvasClass = classnames(noImportant.css(canvasStyles.canvas), noImportant.css(canvasStyles.animationStyle), noImportant.css(open ? canvasStyles.openStyle : ""), noImportant.css(canvasStyles.transitionStyle), customClassName);
+  var overlayClass = classnames((_cx = {}, _defineProperty$1(_cx, classes.overlay, overlay), _defineProperty$1(_cx, classes.overlayBackground, overlayBackground && overlay), _cx), overlayClassName);
+  var canvasBarClass = noImportant.css(canvasStyles.canvasBarStyle);
   var canvasStyle = customStyle;
   var overlayEvents = {
     onClick: overlayClick
@@ -45808,16 +44877,16 @@ var OffCanvas = function OffCanvas(props) {
   var canvasEvents = {
     onClick: canvasClick
   };
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", _extends({
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", _extends$2({
     className: overlayClass
-  }, overlayEvents)), /*#__PURE__*/React.createElement("div", _extends({
+  }, overlayEvents)), /*#__PURE__*/React.createElement("div", _extends$2({
     className: canvasClass
   }, other, {
     style: canvasStyle
   }, canvasEvents), /*#__PURE__*/React.createElement("div", {
     className: canvasBarClass
   }, /*#__PURE__*/React.createElement("div", {
-    className: noImportant$1.css(canvasStyles.canvasContent)
+    className: noImportant.css(canvasStyles.canvasContent)
   }, React.Children.map(children, function (child) {
     if (child.type === content) {
       return /*#__PURE__*/cloneElement(child, _objectSpread2({}, child.props));
@@ -45842,7 +44911,7 @@ OffCanvas.defaultProps = {
   position: "left",
   overlay: false,
   overlayBackground: false,
-  overlayClick: noop$1,
+  overlayClick: noop,
   className: "",
   overlayClassName: "",
   width: null,
@@ -45856,7 +44925,7 @@ var OffCanvasBody = function OffCanvasBody(_ref) {
       className = _ref.className,
       others = _objectWithoutProperties(_ref, ["children", "style", "className"]);
 
-  return /*#__PURE__*/React.createElement("div", _extends({
+  return /*#__PURE__*/React.createElement("div", _extends$2({
     style: _objectSpread2({}, style),
     className: className
   }, others), children);
@@ -45871,9 +44940,9 @@ var content = OffCanvasBody;
 var OffCanvasOverlay = function OffCanvasOverlay(_ref) {
   var _cx;
 
-  var children = _ref.children,
-      _ref$offCanvasPositio = _ref.offCanvasPosition,
-      _ref$overlay = _ref.overlay,
+  var children = _ref.children;
+      _ref.offCanvasPosition;
+      var _ref$overlay = _ref.overlay,
       overlay = _ref$overlay === void 0 ? false : _ref$overlay,
       _ref$overlayBackgroun = _ref.overlayBackground,
       overlayBackground = _ref$overlayBackgroun === void 0 ? false : _ref$overlayBackgroun,
@@ -45881,13 +44950,13 @@ var OffCanvasOverlay = function OffCanvasOverlay(_ref) {
       classes = _ref.classes,
       other = _objectWithoutProperties(_ref, ["children", "offCanvasPosition", "overlay", "overlayBackground", "className", "classes"]);
 
-  var overlayClass = classnames((_cx = {}, _defineProperty(_cx, classes.overlay, overlay), _defineProperty(_cx, classes.overlayBackground, overlayBackground), _cx), className);
-  return /*#__PURE__*/React.createElement("div", _extends({
+  var overlayClass = classnames((_cx = {}, _defineProperty$1(_cx, classes.overlay, overlay), _defineProperty$1(_cx, classes.overlayBackground, overlayBackground), _cx), className);
+  return /*#__PURE__*/React.createElement("div", _extends$2({
     className: overlayClass
   }, other), children);
 };
 
-var styledComponent = createWithStyles(offCanvasStyle)(OffCanvasOverlay);
+createWithStyles(offCanvasStyle)(OffCanvasOverlay);
 
 var Grid = /*#__PURE__*/function (_Component) {
   _inherits(Grid, _Component);
@@ -45900,15 +44969,15 @@ var Grid = /*#__PURE__*/function (_Component) {
     return _super.apply(this, arguments);
   }
 
-  _createClass(Grid, [{
+  _createClass$1(Grid, [{
     key: "render",
     value: function render() {
-      var _this$props = this.props,
-          className = _this$props.className,
-          props = _objectWithoutProperties(_this$props, ["className"]);
+      var _this$props = this.props;
+          _this$props.className;
+          var props = _objectWithoutProperties(_this$props, ["className"]);
 
-      return /*#__PURE__*/React.createElement("div", _extends({
-        className: classnames("uk-grid", this.props.className)
+      return /*#__PURE__*/React.createElement("div", _extends$2({
+        className: classnames("uk-grid uk-margin", this.props.className)
       }, props), this.props.children);
     }
   }]);
@@ -45951,7 +45020,7 @@ var GridItem = function GridItem(props) {
     "uk-width-1-6": w_1_6,
     "uk-width-5-6": w_5_6
   });
-  return /*#__PURE__*/React.createElement("div", _extends({
+  return /*#__PURE__*/React.createElement("div", _extends$2({
     className: cls
   }, other), props.children);
 };
@@ -46005,7 +45074,7 @@ var Checkbox = /*#__PURE__*/function (_Component) {
     }, _temp));
   }
 
-  _createClass(Checkbox, [{
+  _createClass$1(Checkbox, [{
     key: "toggleChecked",
     value: function toggleChecked() {
       this.setState({
@@ -46025,15 +45094,15 @@ var Checkbox = /*#__PURE__*/function (_Component) {
     key: "render",
     value: function render() {
       var _this$props = this.props,
-          className = _this$props.className,
-          checked = _this$props.checked,
-          value = _this$props.value,
+          className = _this$props.className;
+          _this$props.checked;
+          var value = _this$props.value,
           other = _objectWithoutProperties(_this$props, ["className", "checked", "value"]);
 
       var inputClass = classnames("uk-checkbox", className);
       return /*#__PURE__*/React.createElement("label", null, /*#__PURE__*/React.createElement(styledMargin, {
         type: "small-right"
-      }, /*#__PURE__*/React.createElement("input", _extends({
+      }, /*#__PURE__*/React.createElement("input", _extends$2({
         className: inputClass,
         type: "checkbox",
         checked: this.state.checked,
@@ -46057,4 +45126,891 @@ Checkbox.defaultProps = {
 };
 var _Checkbox = Checkbox;
 
-export { _Button as Button, styledButtonGroup as ButtonGroup, _Checkbox as Checkbox, drp as DropDownButton, item as DropDownButtonItem, _icon as Icon, _Input as Input, _Radio as Radio, _RadioGroup as RadioGroup, _Select as Select };
+var Radio = /*#__PURE__*/function (_Component) {
+  _inherits(Radio, _Component);
+
+  var _super = _createSuper(Radio);
+
+  function Radio() {
+    var _temp, _this;
+
+    _classCallCheck(this, Radio);
+
+    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    return _possibleConstructorReturn(_this, (_temp = _this = _super.call.apply(_super, [this].concat(args)), _this.state = {
+      selected: false
+    }, _temp));
+  }
+
+  _createClass$1(Radio, [{
+    key: "toggleSelected",
+    value: function toggleSelected() {
+      this.setState({
+        selected: !this.state.selected
+      });
+    }
+  }, {
+    key: "render",
+    value: function render() {
+      var _this$props = this.props,
+          className = _this$props.className,
+          name = _this$props.name;
+          _this$props.selected;
+          _this$props.value;
+          var other = _objectWithoutProperties(_this$props, ["className", "name", "selected", "value"]);
+
+      var inputClass = classnames("uk-radio", className);
+      return /*#__PURE__*/React.createElement("label", null, /*#__PURE__*/React.createElement("input", _extends$2({
+        name: name,
+        className: inputClass,
+        type: "radio",
+        selected: this.state.selected,
+        onChange: this.toggleSelected.bind(this)
+      }, other)));
+    }
+  }]);
+
+  return Radio;
+}(Component);
+
+Radio.propTypes = {
+  name: propTypes.string,
+  value: propTypes.string,
+  selected: propTypes.bool,
+  className: propTypes.string,
+  disabled: propTypes.bool
+};
+Radio.defaultProps = {
+  selected: false,
+  disabled: false
+};
+var _rd = Radio;
+
+var SelectOption = function SelectOption(_ref) {
+  var children = _ref.children,
+      selected = _ref.selected,
+      _ref$group = _ref.group,
+      group = _ref$group === void 0 ? false : _ref$group,
+      label = _ref.label,
+      value = _ref.value;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, !group && /*#__PURE__*/React.createElement("option", {
+    value: value,
+    selected: selected
+  }, " ", children), group && /*#__PURE__*/React.createElement("optgroup", {
+    label: label
+  }, " ", children));
+};
+
+var _SelectOption = SelectOption;
+
+var css_248z = ".select-module_selectStyle__2U-Cg{cursor:pointer;width:100%;max-width:100%;border:1px solid #e5e5e5;-webkit-transition:.2s ease-in-out;transition:.2s ease-in-out;-webkit-transition-property:color,background-color,border;transition-property:color,background-color,border;display:inline-block;background-color:inherit;margin-left:0}.select-module_selectStyleDisabled__22zSI{cursor:not-allowed;background-color:#faf8f5}.select-module_selectWrapper__2qJjt{padding:15px;position:relative}.select-module_selectWrapper__2qJjt:hover{cursor:pointer!important}.select-module_helperText__2Z80R{display:block;margin-top:10px;color:#f9c7d0;position:absolute}.select-module_helperTextError__25OM3{color:#f44336}.select-module_options__348zS{position:absolute;left:0;right:0;background:#fff;border:1px solid #ccc;padding-left:0;z-index:1000}.select-module_placeholder__2RasG{color:#898989}.select-module_optionWrapper__2guJV{padding:5px;background:inherit;cursor:inherit}.select-module_optionWrapperGroup__3_-_e{background:#faf8f5;cursor:auto}.select-module_optionWrapper__2guJV:hover{background:#5a81f1;color:#fff;cursor:pointer}.select-module_optionWrapper__2guJV:hover .select-module_group__2npyo{background:inherit;color:inherit}.select-module_selectedValue__3BiVt{padding:5px;border:1px solid #5a81f1;margin-left:5px;background:#faf8f5;min-width:-webkit-fit-content;min-width:-moz-fit-content;min-width:fit-content}.select-module_deleteValue__3EkqM,.select-module_selectedValueGroup__bst7y{cursor:pointer}.select-module_chevronWrapper__2HvWY{float:right}.select-module_filterWrapper__3i2O7{display:-ms-flexbox;display:-webkit-box;display:flex;width:100%;text-align:center;cursor:pointer}.select-module_filterInput__2P7Pc{-webkit-box-sizing:border-box;box-sizing:border-box;width:100%;height:auto;font-family:Montserrat,sans-serif;border:0;outline:none}.select-module_optionStyle__3ivtW{position:relative;list-style:none;cursor:pointer}.select-module_optionStyle__3ivtW ul{display:block}.select-module_optionGroupStyle__3K6DT ul{display:contents}";
+var styles = {"selectStyle":"select-module_selectStyle__2U-Cg","selectStyleDisabled":"select-module_selectStyleDisabled__22zSI","selectWrapper":"select-module_selectWrapper__2qJjt","helperText":"select-module_helperText__2Z80R","helperTextError":"select-module_helperTextError__25OM3","options":"select-module_options__348zS","placeholder":"select-module_placeholder__2RasG","optionWrapper":"select-module_optionWrapper__2guJV","optionWrapperGroup":"select-module_optionWrapperGroup__3_-_e","group":"select-module_group__2npyo","selectedValue":"select-module_selectedValue__3BiVt","deleteValue":"select-module_deleteValue__3EkqM","selectedValueGroup":"select-module_selectedValueGroup__bst7y","chevronWrapper":"select-module_chevronWrapper__2HvWY","filterWrapper":"select-module_filterWrapper__3i2O7","filterInput":"select-module_filterInput__2P7Pc","optionStyle":"select-module_optionStyle__3ivtW","optionGroupStyle":"select-module_optionGroupStyle__3K6DT"};
+styleInject(css_248z);
+
+var SelectWrapper = function SelectWrapper(_ref) {
+  var className = _ref.className,
+      children = _ref.children,
+      props = _objectWithoutProperties(_ref, ["className", "children"]);
+
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: classnames(className, styles.selectWrapper)
+  }, props), children);
+};
+
+var HelperText = function HelperText(_ref2) {
+  var error = _ref2.error,
+      children = _ref2.children,
+      props = _objectWithoutProperties(_ref2, ["error", "children"]);
+
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: classnames(styles.helperText, _defineProperty$1({}, styles.helperTextError, error))
+  }, props), children);
+};
+
+var Placeholder = function Placeholder(_ref3) {
+  var children = _ref3.children,
+      props = _objectWithoutProperties(_ref3, ["children"]);
+
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: styles.placeholder
+  }, props), children);
+};
+
+var OptionWrapper = function OptionWrapper(_ref4) {
+  var children = _ref4.children;
+      _ref4.className;
+      var group = _ref4.group,
+      props = _objectWithoutProperties(_ref4, ["children", "className", "group"]);
+
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: classnames(styles.optionWrapper, _defineProperty$1({}, styles.optionWrapperGroup, group))
+  }, props), children);
+};
+
+var SelectedValue = function SelectedValue(_ref5) {
+  var children = _ref5.children,
+      group = _ref5.group,
+      props = _objectWithoutProperties(_ref5, ["children", "group"]);
+
+  return /*#__PURE__*/React.createElement("span", _extends$2({
+    className: classnames(styles.selectedValue, _defineProperty$1({}, styles.selectedValueGroup, group))
+  }, props), children);
+};
+
+var DeleteValue = function DeleteValue(_ref6) {
+  var children = _ref6.children,
+      props = _objectWithoutProperties(_ref6, ["children"]);
+
+  return /*#__PURE__*/React.createElement("span", _extends$2({
+    className: styles.deleteValue
+  }, props), children);
+};
+
+var ChevronWrapper = function ChevronWrapper(_ref7) {
+  var children = _ref7.children,
+      props = _objectWithoutProperties(_ref7, ["children"]);
+
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: styles.chevronWrapper
+  }, props), children);
+};
+
+var FilterWrapper = function FilterWrapper(_ref8) {
+  var children = _ref8.children,
+      props = _objectWithoutProperties(_ref8, ["children"]);
+
+  return /*#__PURE__*/React.createElement("div", _extends$2({
+    className: styles.filterWrapper
+  }, props), children);
+};
+
+var Option = function Option(_ref9) {
+  var children = _ref9.children,
+      className = _ref9.className,
+      group = _ref9.group,
+      props = _objectWithoutProperties(_ref9, ["children", "className", "group"]);
+
+  return /*#__PURE__*/React.createElement("li", _extends$2({
+    className: classnames(className, styles.optionStyle, _defineProperty$1({}, styles.optionGroupStyle, group))
+  }, props), children);
+};
+
+Option.propTypes = {
+  group: propTypes.bool
+};
+Option.defaultProps = {
+  group: false
+};
+
+var Select = /*#__PURE__*/function (_Component) {
+  _inherits(Select, _Component);
+
+  var _super = _createSuper(Select);
+
+  function Select(props) {
+    var _this;
+
+    _classCallCheck(this, Select);
+
+    _this = _super.call(this, props);
+
+    _this.handleDeleteValue = function (value) {
+      return function (e) {
+        e.stopPropagation();
+
+        _this.setState(function (prevState) {
+          var _prevState$values = _toArray(prevState.values),
+              values = _prevState$values.slice(0);
+
+          var index = values.indexOf(value);
+          values.splice(index, 1);
+          return {
+            values: values
+          };
+        });
+      };
+    };
+
+    _this.state = {
+      values: [],
+      //keeps selected values,
+      selectedOptions: [],
+      showFilter: false,
+      filteredOptions: [],
+      showOptions: false // manages options hide and show (chevron up-down,outside click)
+
+    };
+    _this.handleOnChange = _this.handleOnChange.bind(_assertThisInitialized$2(_this));
+    _this.toogleOptions = _this.toogleOptions.bind(_assertThisInitialized$2(_this));
+    _this.handleSelect = _this.handleSelect.bind(_assertThisInitialized$2(_this));
+    _this.closeOptions = _this.closeOptions.bind(_assertThisInitialized$2(_this));
+    _this.handleDeleteValue = _this.handleDeleteValue.bind(_assertThisInitialized$2(_this));
+    _this.handleFilterChange = _this.handleFilterChange.bind(_assertThisInitialized$2(_this));
+    _this.multiRef = /*#__PURE__*/React.createRef();
+    _this.filterRef = /*#__PURE__*/React.createRef();
+    return _this;
+  }
+
+  _createClass$1(Select, [{
+    key: "componentDidMount",
+    value: function componentDidMount() {
+      document.addEventListener("click", this.closeOptions);
+    }
+  }, {
+    key: "componentWillUnmount",
+    value: function componentWillUnmount() {
+      document.removeEventListener("click", this.closeOptions);
+    }
+    /**
+     * close option when outside click
+     * @param {e} e
+     */
+
+  }, {
+    key: "closeOptions",
+    value: function closeOptions(e) {
+      if (this.multiRef.current) {
+        if (!this.multiRef.current.contains(e.target)) {
+          this.setState({
+            showOptions: false
+          });
+        }
+      }
+    }
+    /**
+     *
+     * push selected values to values state
+     * @param {e} e
+     */
+
+  }, {
+    key: "handleSelect",
+    value: function handleSelect(e) {
+      e.stopPropagation();
+      var value = e.currentTarget.getAttribute("data-value");
+      var text = e.currentTarget.dataset.value;
+      var multiple = this.props.multiple; //clear filtered options
+
+      this.setState({
+        filteredOptions: []
+      });
+      this.setState(function (prevState) {
+        if (!multiple) {
+          return {
+            values: [value],
+            showOptions: false,
+            showFilter: false
+          };
+        }
+
+        var _prevState$values2 = _toArray(prevState.values),
+            values = _prevState$values2.slice(0);
+
+        var index = values.indexOf(text);
+
+        if (index === -1) {
+          values.push(value);
+        } else {
+          values.splice(index, 1);
+        }
+
+        return {
+          values: values
+        };
+      });
+    }
+    /**
+     * renders options by giving options values
+     * @param {} options
+     */
+
+  }, {
+    key: "renderOptions",
+    value: function renderOptions() {
+      var _this2 = this;
+
+      var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+      var multiple = this.props.multiple;
+      var values = this.state.values;
+      return /*#__PURE__*/React.createElement("ul", {
+        className: styles.options
+      }, options.map(function (option, index) {
+        return /*#__PURE__*/React.createElement(Option, {
+          key: index,
+          onClick: !option.hasOwnProperty("group") ? _this2.handleSelect : null,
+          "data-value": option.value,
+          group: option.hasOwnProperty("group")
+        }, multiple && /*#__PURE__*/React.createElement(OptionWrapper, {
+          group: option.hasOwnProperty("group")
+        }, option.text, " ", values.includes(option.value) && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement(Icon, {
+          name: "check"
+        }))), !multiple && /*#__PURE__*/React.createElement(OptionWrapper, {
+          group: option.hasOwnProperty("group")
+        }, option.text), option.hasOwnProperty("group") && _this2.renderOptions(option.group));
+      }));
+    } //sends values to onChange event
+
+  }, {
+    key: "handleOnChange",
+    value: function handleOnChange(values) {
+      if (this.state.showFilter) {
+        this.handleFilterChange();
+      }
+
+      var onChange = this.props.onChange;
+
+      if (typeof onChange === "function" && values.nativeEvent === undefined) {
+        // just send values not event
+        if (onChange(values) === false) return;
+      }
+    } //handle multiple delete value
+
+  }, {
+    key: "getSelectedOptions",
+    value: function getSelectedOptions() {
+      var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+      var values = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+      var selectedOptions = [];
+      options.forEach(function (option) {
+        if (option.hasOwnProperty("group")) {
+          option.group.forEach(function (opt) {
+            if (values.includes(opt.value)) {
+              selectedOptions.push(opt);
+            }
+          });
+        } else {
+          if (values.includes(option.value)) {
+            selectedOptions.push(option);
+          }
+        }
+      });
+      return selectedOptions;
+    }
+    /**
+     * Render selected values
+     */
+
+  }, {
+    key: "renderValues",
+    value: function renderValues() {
+      var _this3 = this;
+
+      var _this$state = this.state,
+          values = _this$state.values,
+          showFilter = _this$state.showFilter;
+      var _this$props = this.props,
+          multiple = _this$props.multiple,
+          options = _this$props.options;
+      var selectedOptions = this.getSelectedOptions(options, values);
+
+      if (values.length) {
+        if (multiple) {
+          return selectedOptions.map(function (option, index) {
+            return /*#__PURE__*/React.createElement(SelectedValue, {
+              key: index,
+              group: option.hasOwnProperty("group")
+            }, " ", option.text, " ", /*#__PURE__*/React.createElement(DeleteValue, {
+              onClick: _this3.handleDeleteValue(option.value)
+            }, /*#__PURE__*/React.createElement(Icon, {
+              name: "minus-circle",
+              fontawesome: true,
+              solid: true
+            })));
+          });
+        }
+
+        return !showFilter && /*#__PURE__*/React.createElement("span", null, " ", selectedOptions[0]["text"], " ");
+      }
+    }
+  }, {
+    key: "renderPlaceHolder",
+    value: function renderPlaceHolder() {
+      var _this4 = this;
+
+      var _this$state2 = this.state,
+          values = _this$state2.values,
+          showOptions = _this$state2.showOptions,
+          showFilter = _this$state2.showFilter;
+      var _this$props2 = this.props,
+          placeholder = _this$props2.placeholder,
+          filterable = _this$props2.filterable;
+      return /*#__PURE__*/React.createElement(Placeholder, null, values.length === 0 ? placeholder : "", /*#__PURE__*/React.createElement(ChevronWrapper, null, !showFilter && filterable && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Icon, {
+        onClick: function onClick() {
+          _this4.setState({
+            showFilter: !_this4.state.showFilter
+          });
+        },
+        name: "close",
+        size: 0.8,
+        fontawesome: true,
+        solid: true
+      })), /*#__PURE__*/React.createElement(Icon, {
+        name: showOptions ? "chevron-up" : "chevron-down",
+        fontawesome: true,
+        solid: true
+      })));
+    }
+  }, {
+    key: "toogleOptions",
+    value: function toogleOptions() {
+      var showOptions = this.state.showOptions;
+      this.setState({
+        showOptions: !showOptions
+      });
+    }
+  }, {
+    key: "getSnapshotBeforeUpdate",
+    value: function getSnapshotBeforeUpdate(prevProps, prevState) {
+      if (prevProps.multiple && prevState.values.length !== this.state.values.length) {
+        return this.state.values;
+      }
+
+      if (!prevProps.multiple && prevState.values !== this.state.values) {
+        return this.state.values[0];
+      }
+
+      return null;
+    }
+  }, {
+    key: "componentDidUpdate",
+    value: function componentDidUpdate(prevProps, prevState, snapshot) {
+      if (snapshot !== null) {
+        this.handleOnChange(snapshot);
+      }
+    }
+  }, {
+    key: "handleFilterChange",
+    value: function handleFilterChange() {
+      var _this5 = this;
+
+      var list = [];
+
+      if (this.filterRef.current) {
+        this.props.options.forEach(function (option) {
+          if (option.hasOwnProperty("group")) {
+            var opt = option.group.filter(function (d) {
+              return d.text.toLowerCase().indexOf(_this5.filterRef.current.value.toLowerCase()) > -1;
+            });
+
+            if (opt.length) {
+              var newOpt = {
+                text: option.text,
+                group: opt
+              };
+              list.push(newOpt);
+            }
+          } else {
+            if (option.text.toLowerCase().indexOf(_this5.filterRef.current.value.toLowerCase()) > -1) {
+              list.push(option);
+            }
+          }
+        });
+
+        if (list.length === 0) {
+          list.push({
+            value: null,
+            text: "No records found!"
+          });
+        }
+
+        this.setState({
+          filteredOptions: list,
+          showOptions: true,
+          filterVal: this.filterRef.current.value
+        });
+      }
+    }
+  }, {
+    key: "render",
+    value: function render() {
+      var _this$props3 = this.props;
+          _this$props3.children;
+          _this$props3.filterable;
+          var className = _this$props3.className,
+          helperText = _this$props3.helperText,
+          disabled = _this$props3.disabled,
+          error = _this$props3.error;
+          _this$props3.value;
+          var multiple = _this$props3.multiple,
+          placeholder = _this$props3.placeholder,
+          options = _this$props3.options;
+          _this$props3.onChange;
+          var other = _objectWithoutProperties(_this$props3, ["children", "filterable", "className", "helperText", "disabled", "error", "value", "multiple", "placeholder", "options", "onChange"]);
+
+      var _this$state3 = this.state,
+          showOptions = _this$state3.showOptions,
+          showFilter = _this$state3.showFilter,
+          filteredOptions = _this$state3.filteredOptions;
+      return /*#__PURE__*/React.createElement("div", {
+        className: classnames(styles.selectStyle, _defineProperty$1({}, styles.selectStyleDisabled, disabled)),
+        style: {
+          width: "100%",
+          maxWidth: "100%"
+        }
+      }, /*#__PURE__*/React.createElement(SelectWrapper, null, /*#__PURE__*/React.createElement("div", _extends$2({
+        className: className,
+        onClick: this.toogleOptions,
+        ref: this.multiRef,
+        onChange: this.handleOnChange
+      }, other), !showFilter && this.renderPlaceHolder(), showFilter && /*#__PURE__*/React.createElement(FilterWrapper, null, multiple ? !disabled && this.renderValues() : "", /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        ref: this.filterRef,
+        placeholder: placeholder,
+        className: classnames("uk-input", styles.filterInput)
+      })), !showFilter && !disabled && this.renderValues(), showOptions && !disabled && this.renderOptions(filteredOptions.length ? filteredOptions : options))), helperText && /*#__PURE__*/React.createElement(HelperText, {
+        error: error
+      }, helperText));
+    }
+  }]);
+
+  return Select;
+}(Component);
+
+Select.propTypes = {
+  error: propTypes.bool,
+  disabled: propTypes.bool,
+  multiple: propTypes.bool,
+  helperText: propTypes.string,
+  onChange: propTypes.func,
+  placeholder: propTypes.string,
+  options: propTypes.array
+};
+Select.defaultProps = {
+  disabled: false,
+  error: false,
+  helperText: "",
+  multiple: false
+};
+Select.Option = _SelectOption;
+var _Select = Select;
+
+var Card = /*#__PURE__*/forwardRef$2(function Card(props, ref) {
+  var className = props.className,
+      children = props.children,
+      color = props.color,
+      size = props.size,
+      title = props.title,
+      other = _objectWithoutProperties(props, ["className", "children", "color", "size", "title"]);
+
+  var headerComponentExist = false;
+  var mediaClass = "";
+  Children.map(children, function (child, index) {
+    if (child.type.displayName === "CardHeader" || child.type.displayName === "CardBody") {
+      headerComponentExist = true;
+    }
+
+    if (child.type.displayName === "CardMedia") {
+      if (child.props.align === "left" || child.props.align === "right") {
+        mediaClass = "uk-grid-collapse uk-child-width-1-2@s uk-margin uk-grid";
+      }
+    }
+  });
+  return /*#__PURE__*/createElement("div", _extends$2({
+    ref: ref,
+    className: classnames("uk-card", "uk-card-".concat(color), {
+      "uk-card-body": !headerComponentExist,
+      "uk-card-small": size === "small",
+      "uk-card-large": size === "large"
+    }, mediaClass, className)
+  }, other), title && !headerComponentExist && /*#__PURE__*/createElement("h3", {
+    className: "uk-card-title"
+  }, title), children);
+});
+Card.propTypes = {
+  /**
+   * The content of the component.
+   */
+  children: propTypes.node,
+
+  /**
+   * @ignore
+   */
+  className: propTypes.string,
+
+  /**
+   * Set bg color
+   */
+  color: propTypes.oneOf(["default", "primary", "secondary"]),
+
+  /**
+   * Card title
+   */
+  title: propTypes.string,
+
+  /**
+   * size prop
+   */
+  size: propTypes.oneOf(["small", "large"])
+};
+Card.defaultProps = {
+  color: "default"
+};
+
+var CardHeader = /*#__PURE__*/forwardRef$2(function CardHeader(props, ref) {
+  var action = props.action,
+      className = props.className,
+      _props$component = props.component,
+      Component = _props$component === void 0 ? "div" : _props$component,
+      subheaderProp = props.subheader,
+      subheaderTypographyProps = props.subheaderTypographyProps,
+      titleProp = props.title,
+      titleTypographyProps = props.titleTypographyProps,
+      avatar = props.avatar,
+      other = _objectWithoutProperties(props, ["action", "className", "component", "subheader", "subheaderTypographyProps", "title", "titleTypographyProps", "avatar"]);
+
+  var title = titleProp;
+
+  if (title != null) {
+    title = /*#__PURE__*/createElement("div", _extends$2({
+      className: "uk-card-title",
+      component: "h3"
+    }, titleTypographyProps), title);
+  }
+
+  var subheader = subheaderProp;
+
+  if (subheader != null) {
+    subheader = /*#__PURE__*/createElement("div", _extends$2({
+      className: "uk-text-meta",
+      component: "span"
+    }, subheaderTypographyProps), subheader);
+  }
+
+  return /*#__PURE__*/createElement(Component, _extends$2({
+    className: classnames("uk-card-header", className),
+    ref: ref
+  }, other), /*#__PURE__*/createElement(Grid, {
+    className: "uk-grid-small uk-flex-middle"
+  }, avatar && /*#__PURE__*/createElement("div", {
+    "class": "uk-width-auto"
+  }, avatar), /*#__PURE__*/createElement("div", {
+    "class": "uk-width-expand"
+  }, title, subheader)), action && /*#__PURE__*/createElement("div", {
+    className: "uk-card-badge"
+  }, action));
+});
+CardHeader.propTypes = {
+  /**
+   * The action to display in the card header.
+   */
+  action: propTypes.node,
+
+  /**
+   * @ignore
+   */
+  children: propTypes.node,
+
+  /**
+   * @ignore
+   */
+  className: propTypes.string,
+
+  /**
+   * The component used for the root node.
+   * Either a string to use a HTML element or a component.
+   */
+  component: propTypes
+  /* @typescript-to-proptypes-ignore elementType*/
+  ,
+
+  /**
+   * The content of the component.
+   */
+  subheader: propTypes.node,
+
+  /**
+   * These props will be forwarded to the subheader
+   * (as long as disableTypography is not `true`).
+   */
+  subheaderTypographyProps: propTypes.object,
+
+  /**
+   * The content of the Card Title.
+   */
+  title: propTypes.node,
+
+  /**
+   * These props will be forwarded to the title
+   * (as long as disableTypography is not `true`).
+   */
+  titleTypographyProps: propTypes.object,
+
+  /**
+   * The Avatar for the Card Header.
+   */
+  avatar: propTypes.node
+};
+CardHeader.displayName = "CardHeader";
+
+var CardBody = /*#__PURE__*/forwardRef$2(function CardBody(props, ref) {
+  props.classes;
+      var className = props.className,
+      _props$component = props.component,
+      Component = _props$component === void 0 ? 'div' : _props$component,
+      other = _objectWithoutProperties(props, ["classes", "className", "component"]);
+
+  return /*#__PURE__*/createElement(Component, _extends$2({
+    className: classnames("uk-card-body", className),
+    ref: ref
+  }, other));
+});
+CardBody.propTypes = {
+  /**
+   * The content of the component.
+   */
+  children: propTypes.node,
+
+  /**
+   * @ignore
+   */
+  className: propTypes.string,
+
+  /**
+   * The component used for the root node.
+   * Either a string to use a HTML element or a component.
+   */
+  component: propTypes.elementType
+};
+CardBody.displayName = "CardBody";
+
+var CardFooter = /*#__PURE__*/forwardRef$2(function CardFooter(props, ref) {
+  var className = props.className,
+      other = _objectWithoutProperties(props, ["className"]);
+
+  return /*#__PURE__*/createElement("div", _extends$2({
+    className: classnames("uk-card-footer", className),
+    ref: ref
+  }, other));
+});
+CardFooter.propTypes = {
+  /**
+   * The content of the component.
+   */
+  children: propTypes.node,
+
+  /**
+   * @ignore
+   */
+  className: propTypes.string
+};
+
+var CardMedia = /*#__PURE__*/forwardRef$2(function CardMedia(props, ref) {
+  var className = props.className,
+      align = props.align;
+      props.children;
+      var width = props.width,
+      height = props.height,
+      src = props.src,
+      alt = props.alt,
+      other = _objectWithoutProperties(props, ["className", "align", "children", "width", "height", "src", "alt"]);
+
+  return /*#__PURE__*/createElement("div", _extends$2({
+    className: classnames("uk-card-media-".concat(align), {
+      "uk-cover-container": align === "right" || align === "left"
+    }, className),
+    ref: ref
+  }, other), /*#__PURE__*/createElement("img", {
+    alt: alt,
+    src: src,
+    style: {
+      height: "100%",
+      width: "100%"
+    },
+    className: align === "right" || align === "left" ? "uk-cover" : ""
+  }), (align === "left" || align === "right") && /*#__PURE__*/createElement("canvas", {
+    width: width,
+    height: height
+  }));
+});
+CardMedia.propTypes = {
+  /**
+   * The content of the component.
+   */
+  children: propTypes.node,
+
+  /**
+   * @ignore
+   */
+  className: propTypes.string,
+
+  /**
+   * align media
+   */
+  align: propTypes.oneOf(["top", "left", "right", "bottom"]),
+
+  /**
+   * image src
+   */
+  src: propTypes.string,
+
+  /**
+   * canvas width and height
+   */
+  width: propTypes.number,
+  height: propTypes.number
+};
+CardMedia.defaultProps = {
+  align: "top",
+  width: 600,
+  height: 400
+};
+CardMedia.displayName = "CardMedia";
+
+var Avatar = /*#__PURE__*/forwardRef$2(function Avatar(props, ref) {
+  var alt = props.alt;
+      props.children;
+      props.classes;
+      props.className;
+      var width = props.width,
+      height = props.height,
+      src = props.src,
+      other = _objectWithoutProperties(props, ["alt", "children", "classes", "className", "width", "height", "src"]);
+
+  return /*#__PURE__*/createElement(Fragment$1, null, /*#__PURE__*/createElement("img", _extends$2({
+    alt: alt,
+    src: src,
+    width: width,
+    height: height,
+    className: "uk-border-circle"
+  }, other, {
+    ref: ref
+  })));
+});
+Avatar.propTypes = {
+  /**
+   * Used in combination with `src` or `srcSet` to
+   * provide an alt attribute for the rendered `img` element.
+   */
+  alt: propTypes.string,
+
+  /**
+   * Used to render icon or text elements inside the Avatar if `src` is not set.
+   * This can be an element, or just a string.
+   */
+  children: propTypes.node,
+
+  /**
+   * Override or extend the styles applied to the component.
+   */
+  classes: propTypes.object,
+
+  /**
+   * @ignore
+   */
+  className: propTypes.string,
+
+  /**
+   * The `sizes` attribute for the `img` element.
+   */
+  sizes: propTypes.string,
+
+  /**
+   * The `src` attribute for the `img` element.
+   */
+  src: propTypes.string
+};
+
+export { Avatar, _Button as Button, styledButtonGroup as ButtonGroup, Card, CardBody, CardFooter, CardHeader, CardMedia, _Checkbox as Checkbox, drp as DropDownButton, item as DropDownButtonItem, Grid, GridItem, Icon, _Input as Input, styledMargin as Margin, styledMenu as Menu, styledMenuItem as MenuItem, styledOffCanvas as OffCanvas, content as OffCanvasBody, _rd as Radio, _Select as Select, Tab, TabItem, TabStrip, styledToolBar as Toolbar, ToolbarContent, styledToolbarItem as ToolbarItem };
