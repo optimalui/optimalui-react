@@ -1,0 +1,59 @@
+/** DROPDOWN STYLE*/
+
+.inline {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+  vertical-align: middle;
+  backface-visibility: hidden;
+}
+.dropDown {
+  display: none;
+  position: absolute;
+  z-index: 1020;
+  box-sizing: border-box;
+  min-width: 200px;
+  padding: 25px;
+  background: #fff;
+  color: #666;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
+  list-style: none;
+}
+.dropDownOpen {
+  display: block;
+}
+.dropDownNav {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+/** DROPDOWN ITEM STYLE*/
+
+.dropDownItem {
+  padding: 5px 0;
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+  color: #999;
+}
+
+.dropDownItem:hover {
+  color: #666;
+  text-decoration: none;
+}
+
+.dropDownItem:focus {
+  outline: none;
+  color: #666;
+  text-decoration: none;
+}
+.disabledItem {
+  cursor: default;
+  opacity: 0.6;
+}
+.iconStyle {
+  margin-right: 10px !important;
+}

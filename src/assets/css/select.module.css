@@ -1,0 +1,104 @@
+.selectStyle{
+  cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #e5e5e5;
+  transition: 0.2s ease-in-out;
+  transition-property: color, background-color, border;
+  display: inline-block;
+  background-color: inherit;
+  margin-left: 0;
+}
+.selectStyleDisabled{
+    cursor:not-allowed;
+    background-color: #FAF8F5;
+}
+.selectWrapper {
+  padding: 15px;
+  position: relative;
+}
+.selectWrapper:hover {
+  cursor: pointer !important;
+}
+.helperText {
+  display: block;
+  margin-top: 10px;
+  color: #f9c7d0;
+  position: absolute;
+}
+.helperTextError {
+  color: #f44336;
+}
+.options {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-width: 0 1px;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding-left: 0px;
+  z-index: 1000;
+}
+.placeholder {
+  color: #898989;
+}
+.optionWrapper {
+  padding: 5px;
+  background: inherit;
+  cursor: inherit;
+}
+.optionWrapperGroup {
+  background: #faf8f5;
+  cursor: initial;
+}
+.optionWrapper:hover {
+  background: #5a81f1;
+  color: #fff;
+  cursor: pointer;
+}
+.optionWrapper:hover .group {
+  background: inherit;
+  color: inherit;
+}
+.selectedValue {
+  padding: 5px;
+  border: 1px solid #5a81f1;
+  margin-left: 5px;
+  background: #faf8f5;
+  min-width: fit-content;
+}
+.selectedValueGroup{
+  cursor: pointer;
+}
+.deleteValue {
+  cursor: pointer;
+}
+.chevronWrapper {
+  float: right;
+}
+.filterWrapper {
+  display: -ms-flexbox;
+  display: flex;
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+}
+.filterInput {
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  font-family: "Montserrat", sans-serif;
+  border: 0;
+  outline: none;
+}
+.optionStyle {
+  position: relative;
+  list-style: none;
+  cursor: pointer;
+}
+.optionStyle ul {
+  display: block;
+}
+.optionGroupStyle ul {
+  display: contents;
+}
