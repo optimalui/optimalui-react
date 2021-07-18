@@ -1,6 +1,6 @@
 {
   "name": "optimalui-react",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
   "files": [
@@ -10,7 +10,7 @@
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/optimalui/optimalui-react",
-  "homepage": "http://optimalui.github.io",
+  "homepage": "http://optimalui.github.io/optimalui-web",
   "keywords": [
     "reactjs",
     "react components",
@@ -76,5 +76,4 @@
     "uuid": "^3.4.0"
   },
   "browserslist": []
-
 }
